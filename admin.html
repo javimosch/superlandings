@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperLandings Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+  <style>
+    .CodeMirror { height: 400px; border: 1px solid #ddd; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div id="app" class="min-h-screen">
+    <header class="bg-blue-600 text-white shadow-lg">
+      <div class="container mx-auto px-4 py-6">
+        <h1 class="text-3xl font-bold">SuperLandings Admin</h1>
+        <p class="text-blue-100 mt-1">Manage your landing pages</p>
+      </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+      <div class="mb-6">
+        <button @click="showAddModal = true" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold shadow-md">
+          + Add New Landing
+        </button>
+      </div>
+
+      <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="px-6 py-4 bg-gray-50 border-b">
+          <h2 class="text-xl font-semibold text-gray-800">Landing Pages</h2>
+        </div>
+        
+        <div v-if="landings.length === 0" class="px-6 py-12 text-center text-gray-500">
+          <p class="text-lg">No landing pages yet. Create your first one!</p>
+        </div>
+
+        <div v-else class="divide-y">
+          <div v-for="landing in landings" :key="landing.id" class="px-6 py-4 hover:bg-gray-50 transition">
+            <div class="flex items-center justify-between">
+              <div class="flex-1">
+                <h3 class="text-lg font-semibold text-gray-900">{{ landing.name }}</h3>
+                <div class="mt-1 flex items-center gap-4 text-sm text-gray-600">
+                  <span class="flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                    </svg>
+                    <a :href="'/' + landing.slug" target="_blank" class="hover:text-blue-600">/{{ landing.slug }}</a>
+                  </span>
+                  <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium uppercase">{{ landing.type }}</span>
+                  <span v-if="landing.published" class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">✓ Published</span>
+                  <span v-if="landing.domains && landing.domains.length > 0" class="text-xs text-gray-600">🌐 {{ landing.domains.length }} domain{{ landing.domains.length > 1 ? 's' : '' }}</span>
+                  <span class="text-xs text-gray-500">{{ formatDate(landing.createdAt) }}</span>
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button @click="openDomainsModal(landing)" class="px-3 py-2 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition text-sm font-medium">
+                  🌐 Domains
+                </button>
+                <button v-if="!landing.published && landing.domains && landing.domains.length > 0" @click="publishLanding(landing.id)" :disabled="loading[landing.id]" class="px-3 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200 transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                  <span v-if="loading[landing.id]">⏳ Publishing...</span>
+                  <span v-else>Publish</span>
+                </button>
+                <button v-if="landing.published" @click="unpublishLanding(landing.id)" :disabled="loading[landing.id]" class="px-3 py-2 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                  <span v-if="loading[landing.id]">⏳ Unpublishing...</span>
+                  <span v-else>Unpublish</span>
+                </button>
+                <button v-if="landing.type === 'html'" @click="editLanding(landing)" class="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition text-sm font-medium">
+                  Edit
+                </button>
+                <button @click="deleteLanding(landing.id)" class="px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition text-sm font-medium">
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Toast Notifications -->
+    <div v-if="error" class="fixed top-4 right-4 bg-red-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md">
+      <div class="flex items-start">
+        <svg class="w-6 h-6 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div class="flex-1">
+          <p class="font-semibold">Error</p>
+          <p class="text-sm">{{ error }}</p>
+        </div>
+        <button @click="error = null" class="ml-4 text-white hover:text-gray-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div v-if="success" class="fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md">
+      <div class="flex items-start">
+        <svg class="w-6 h-6 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div class="flex-1">
+          <p class="font-semibold">Success</p>
+          <p class="text-sm">{{ success }}</p>
+        </div>
+        <button @click="success = null" class="ml-4 text-white hover:text-gray-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Add Landing Modal -->
+    <div v-if="showAddModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
+          <h3 class="text-xl font-semibold text-gray-900">Add New Landing</h3>
+          <button @click="closeAddModal" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <form @submit.prevent="addLanding" class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Landing Name</label>
+            <input v-model="newLanding.name" type="text" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="My Awesome Landing">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Slug (URL path)</label>
+            <input v-model="newLanding.slug" type="text" required pattern="[a-z0-9-]+" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="my-landing">
+            <p class="mt-1 text-sm text-gray-500">Only lowercase letters, numbers, and hyphens</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Domains (optional)</label>
+            <div class="space-y-2">
+              <div v-for="(domain, index) in newLanding.domains" :key="index" class="flex gap-2">
+                <input v-model="newLanding.domains[index]" type="text" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="example.com">
+                <button @click="newLanding.domains.splice(index, 1)" type="button" class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200">
+                  ✕
+                </button>
+              </div>
+              <button @click="newLanding.domains.push('')" type="button" class="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600">
+                + Add Domain
+              </button>
+            </div>
+            <p class="mt-1 text-sm text-gray-500">Leave empty to only serve on /:slug. Add domains to enable Traefik publishing.</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
+            <select v-model="newLanding.type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <option value="html">Single HTML File</option>
+              <option value="static">Static Folder (ZIP or Files)</option>
+              <option value="ejs">EJS Template</option>
+            </select>
+          </div>
+
+          <div v-if="newLanding.type === 'html'">
+            <label class="block text-sm font-medium text-gray-700 mb-2">HTML Content</label>
+            <div ref="addEditorContainer"></div>
+          </div>
+
+          <div v-if="newLanding.type === 'static' || newLanding.type === 'ejs'">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              {{ newLanding.type === 'static' ? 'Upload ZIP file or multiple files' : 'Upload EJS files' }}
+            </label>
+            <input ref="fileInput" type="file" :multiple="true" :accept="newLanding.type === 'static' ? '.zip,*' : '.ejs,.html'" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          </div>
+
+          <div class="flex gap-3 pt-4">
+            <button type="submit" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
+              Create Landing
+            </button>
+            <button type="button" @click="closeAddModal" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit HTML Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+        <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
+          <h3 class="text-xl font-semibold text-gray-900">Edit HTML - {{ editingLanding.name }}</h3>
+          <button @click="closeEditModal" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="p-6 flex-1 overflow-hidden">
+          <div ref="editEditorContainer" class="h-full"></div>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t flex gap-3">
+          <button @click="saveEdit" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
+            Save Changes
+          </button>
+          <button @click="closeEditModal" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Domains Modal -->
+    <div v-if="showDomainsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
+        <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
+          <h3 class="text-xl font-semibold text-gray-900">Configure Domains</h3>
+          <button @click="closeDomainsModal" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="p-6">
+          <div class="mb-4">
+            <p class="text-sm text-gray-600 mb-4">Landing: <strong>{{ editingDomains?.name }}</strong></p>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Domains</label>
+            <div class="space-y-2 mb-3">
+              <div v-for="(domain, index) in editingDomains.domains" :key="index" class="flex gap-2">
+                <input v-model="editingDomains.domains[index]" type="text" pattern="^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="example.com">
+                <button @click="editingDomains.domains.splice(index, 1)" type="button" class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
+                  ✕
+                </button>
+              </div>
+              <button @click="editingDomains.domains.push('')" type="button" class="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition">
+                + Add Domain
+              </button>
+            </div>
+            <p class="mt-2 text-sm text-gray-500">Configure multiple domains before publishing to Traefik. All domains will route to this landing.</p>
+            <p v-if="editingDomains.published" class="mt-2 text-sm text-orange-600">⚠️ Landing is currently published. Unpublish before changing domains.</p>
+          </div>
+
+          <div class="flex gap-3">
+            <button @click="saveDomains" :disabled="editingDomains.published" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed">
+              Save Domains
+            </button>
+            <button @click="closeDomainsModal" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          landings: [],
+          showAddModal: false,
+          showEditModal: false,
+          newLanding: { name: '', slug: '', type: 'html', domains: [], content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Landing</title>\n</head>\n<body>\n  <h1>Hello World!</h1>\n</body>\n</html>' },
+          editingDomains: null,
+          showDomainsModal: false,
+          editingLanding: null,
+          addEditor: null,
+          editEditor: null,
+          loading: {},
+          error: null,
+          success: null
+        };
+      },
+      mounted() {
+        this.loadLandings();
+      },
+      methods: {
+        showError(message) {
+          this.error = message;
+          setTimeout(() => { this.error = null; }, 5000);
+        },
+        showSuccess(message) {
+          this.success = message;
+          setTimeout(() => { this.success = null; }, 3000);
+        },
+        async loadLandings() {
+          try {
+            const res = await fetch('/api/landings');
+            this.landings = await res.json();
+          } catch (err) {
+            this.showError('Error loading landings: ' + err.message);
+          }
+        },
+        formatDate(dateStr) {
+          return new Date(dateStr).toLocaleDateString();
+        },
+        closeAddModal() {
+          this.showAddModal = false;
+          this.newLanding = { name: '', slug: '', type: 'html', domains: [], content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Landing</title>\n</head>\n<body>\n  <h1>Hello World!</h1>\n</body>\n</html>' };
+          if (this.addEditor) {
+            this.addEditor.toTextArea();
+            this.addEditor = null;
+          }
+        },
+        async addLanding() {
+          try {
+            const formData = new FormData();
+            formData.append('name', this.newLanding.name);
+            formData.append('slug', this.newLanding.slug);
+            formData.append('type', this.newLanding.type);
+            formData.append('domains', JSON.stringify(this.newLanding.domains.filter(d => d.trim())));
+
+            if (this.newLanding.type === 'html') {
+              formData.append('content', this.addEditor ? this.addEditor.getValue() : this.newLanding.content);
+            } else if (this.$refs.fileInput && this.$refs.fileInput.files.length > 0) {
+              Array.from(this.$refs.fileInput.files).forEach(file => {
+                formData.append('files', file);
+              });
+            }
+
+            const res = await fetch('/api/landings', { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error);
+            
+            this.showSuccess('Landing created successfully!');
+            this.closeAddModal();
+            this.loadLandings();
+          } catch (err) {
+            this.showError('Error creating landing: ' + err.message);
+          }
+        },
+        async editLanding(landing) {
+          try {
+            const res = await fetch(`/api/landings/${landing.id}/content`);
+            const data = await res.json();
+            this.editingLanding = { ...landing, content: data.content };
+            this.showEditModal = true;
+            this.$nextTick(() => {
+              this.initEditEditor();
+            });
+          } catch (err) {
+            this.showError('Error loading landing: ' + err.message);
+          }
+        },
+        async saveEdit() {
+          try {
+            const content = this.editEditor.getValue();
+            const res = await fetch(`/api/landings/${this.editingLanding.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content })
+            });
+            
+            if (!res.ok) throw new Error('Failed to save');
+            
+            this.showSuccess('Changes saved successfully!');
+            this.closeEditModal();
+            this.loadLandings();
+          } catch (err) {
+            this.showError('Error saving: ' + err.message);
+          }
+        },
+        closeEditModal() {
+          this.showEditModal = false;
+          this.editingLanding = null;
+          if (this.editEditor) {
+            this.editEditor.toTextArea();
+            this.editEditor = null;
+          }
+        },
+        openDomainsModal(landing) {
+          this.editingDomains = { ...landing, domains: [...(landing.domains || [])] };
+          this.showDomainsModal = true;
+        },
+        closeDomainsModal() {
+          this.showDomainsModal = false;
+          this.editingDomains = null;
+        },
+        async saveDomains() {
+          try {
+            const domains = this.editingDomains.domains.filter(d => d.trim());
+            const res = await fetch(`/api/landings/${this.editingDomains.id}/domains`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ domains })
+            });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error);
+            
+            this.showSuccess('Domains updated successfully!');
+            this.closeDomainsModal();
+            this.loadLandings();
+          } catch (err) {
+            this.showError('Error updating domains: ' + err.message);
+          }
+        },
+        async publishLanding(id) {
+          if (!confirm('Publish this landing to Traefik? Make sure Traefik is configured in .env')) return;
+          
+          this.$set(this.loading, id, true);
+          try {
+            const res = await fetch(`/api/landings/${id}/publish`, { method: 'POST' });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error);
+            
+            this.showSuccess(data.message);
+            this.loadLandings();
+          } catch (err) {
+            this.showError('Error publishing: ' + err.message);
+          } finally {
+            this.$set(this.loading, id, false);
+          }
+        },
+        async unpublishLanding(id) {
+          if (!confirm('Unpublish this landing from Traefik?')) return;
+          
+          this.$set(this.loading, id, true);
+          try {
+            const res = await fetch(`/api/landings/${id}/unpublish`, { method: 'POST' });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error);
+            
+            this.showSuccess(data.message);
+            this.loadLandings();
+          } catch (err) {
+            this.showError('Error unpublishing: ' + err.message);
+          } finally {
+            this.$set(this.loading, id, false);
+          }
+        },
+        async deleteLanding(id) {
+          if (!confirm('Are you sure you want to delete this landing? If published, it will be unpublished first.')) return;
+          
+          try {
+            const res = await fetch(`/api/landings/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete');
+            
+            this.showSuccess('Landing deleted successfully!');
+            this.loadLandings();
+          } catch (err) {
+            this.showError('Error deleting landing: ' + err.message);
+          }
+        },
+        initAddEditor() {
+          if (this.$refs.addEditorContainer && !this.addEditor) {
+            const textarea = document.createElement('textarea');
+            textarea.value = this.newLanding.content;
+            this.$refs.addEditorContainer.appendChild(textarea);
+            this.addEditor = CodeMirror.fromTextArea(textarea, {
+              mode: 'htmlmixed',
+              lineNumbers: true,
+              theme: 'default',
+              lineWrapping: true
+            });
+          }
+        },
+        initEditEditor() {
+          if (this.$refs.editEditorContainer && !this.editEditor) {
+            const textarea = document.createElement('textarea');
+            textarea.value = this.editingLanding.content;
+            this.$refs.editEditorContainer.appendChild(textarea);
+            this.editEditor = CodeMirror.fromTextArea(textarea, {
+              mode: 'htmlmixed',
+              lineNumbers: true,
+              theme: 'default',
+              lineWrapping: true
+            });
+            this.editEditor.setSize('100%', '400px');
+          }
+        }
+      },
+      watch: {
+        showAddModal(val) {
+          if (val) {
+            this.$nextTick(() => {
+              this.initAddEditor();
+            });
+          }
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>

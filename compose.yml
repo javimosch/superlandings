@@ -1,0 +1,25 @@
+services:
+  superlandings:
+    #build: .
+    image: node:20.17.0-alpine
+    ports:
+      - "3000:3000"
+    environment:
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - PORT=3000
+    working_dir: /app
+    volumes:
+      - landing-data:/app/data
+      - ./:/app
+    restart: unless-stopped
+    networks:
+      - coolify-shared
+
+volumes:
+  landing-data:
+    driver: local
+
+networks:
+  coolify-shared:
+    external: true
