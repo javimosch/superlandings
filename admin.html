@@ -20,8 +20,26 @@
   <div id="app" class="min-h-screen">
     <header class="bg-blue-600 text-white shadow-lg">
       <div class="container mx-auto px-4 py-6">
-        <h1 class="text-3xl font-bold">SuperLandings Admin</h1>
-        <p class="text-blue-100 mt-1">Manage your landing pages</p>
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-3xl font-bold">SuperLandings Admin</h1>
+            <p class="text-blue-100 mt-1">Manage your landing pages</p>
+          </div>
+          <div class="flex items-center gap-4">
+            <div v-if="adminConfig.domains && adminConfig.domains.length > 0" class="text-sm">
+              <span class="text-blue-100">Admin domains:</span>
+              <template v-if="adminConfig.published">
+                <a v-for="(domain, idx) in adminConfig.domains" :key="idx" :href="'https://' + domain" target="_blank" class="ml-2 hover:text-white underline">{{ domain }}</a>
+              </template>
+              <template v-else>
+                <span class="ml-2">{{ adminConfig.domains.join(', ') }}</span>
+              </template>
+            </div>
+            <button @click="showAdminDomainsModal = true" class="px-4 py-2 bg-blue-500 hover:bg-blue-400 rounded-lg transition text-sm font-medium">
+              ⚙️ Admin Domains
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -55,7 +73,15 @@
                   </span>
                   <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium uppercase">{{ landing.type }}</span>
                   <span v-if="landing.published" class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">✓ Published</span>
-                  <span v-if="landing.domains && landing.domains.length > 0" class="text-xs text-gray-600">🌐 {{ landing.domains.length }} domain{{ landing.domains.length > 1 ? 's' : '' }}</span>
+                  <span v-if="landing.domains && landing.domains.length > 0" class="text-xs text-gray-600">
+                    🌐 
+                    <template v-if="landing.published">
+                      <a v-for="(domain, idx) in landing.domains" :key="idx" :href="'https://' + domain" target="_blank" class="hover:text-blue-600 underline">{{ domain }}</a><span v-if="idx < landing.domains.length - 1">, </span>
+                    </template>
+                    <template v-else>
+                      {{ landing.domains.length }} domain{{ landing.domains.length > 1 ? 's' : '' }}
+                    </template>
+                  </span>
                   <span class="text-xs text-gray-500">{{ formatDate(landing.createdAt) }}</span>
                 </div>
               </div>
@@ -237,7 +263,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Domains</label>
             <div class="space-y-2 mb-3">
               <div v-for="(domain, index) in editingDomains.domains" :key="index" class="flex gap-2">
-                <input v-model="editingDomains.domains[index]" type="text" pattern="^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.[a-zA-Z]{2,}$" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="example.com">
+                <input v-model="editingDomains.domains[index]" type="text" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="example.com">
                 <button @click="editingDomains.domains.splice(index, 1)" type="button" class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
                   ✕
                 </button>
@@ -261,6 +287,57 @@
         </div>
       </div>
     </div>
+
+    <!-- Admin Domains Modal -->
+    <div v-if="showAdminDomainsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
+        <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
+          <h3 class="text-xl font-semibold text-gray-900">Configure Admin Domains</h3>
+          <button @click="showAdminDomainsModal = false" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="p-6">
+          <div class="mb-4">
+            <p class="text-sm text-gray-600 mb-4">Configure domains to access the admin panel via Traefik</p>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Domains</label>
+            <div class="space-y-2 mb-3">
+              <div v-for="(domain, index) in adminConfig.domains" :key="index" class="flex gap-2">
+                <input v-model="adminConfig.domains[index]" type="text" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="admin.example.com">
+                <button @click="adminConfig.domains.splice(index, 1)" type="button" class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
+                  ✕
+                </button>
+              </div>
+              <button @click="adminConfig.domains.push('')" type="button" class="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition">
+                + Add Domain
+              </button>
+            </div>
+            <p class="mt-2 text-sm text-gray-500">All domains will route to the admin panel (/admin)</p>
+            <p v-if="adminConfig.published" class="mt-2 text-sm text-orange-600">⚠️ Admin is currently published. Unpublish before changing domains.</p>
+          </div>
+
+          <div class="flex gap-3 mb-3">
+            <button @click="saveAdminDomains" :disabled="adminConfig.published" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed">
+              Save Domains
+            </button>
+          </div>
+
+          <div class="flex gap-3">
+            <button v-if="!adminConfig.published && adminConfig.domains.length > 0" @click="publishAdmin" :disabled="loading.admin" class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+              <span v-if="loading.admin">⏳ Publishing...</span>
+              <span v-else>Publish Admin</span>
+            </button>
+            <button v-if="adminConfig.published" @click="unpublishAdmin" :disabled="loading.admin" class="flex-1 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+              <span v-if="loading.admin">⏳ Unpublishing...</span>
+              <span v-else>Unpublish Admin</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -275,6 +352,8 @@
           newLanding: { name: '', slug: '', type: 'html', domains: [], content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Landing</title>\n</head>\n<body>\n  <h1>Hello World!</h1>\n</body>\n</html>' },
           editingDomains: null,
           showDomainsModal: false,
+          showAdminDomainsModal: false,
+          adminConfig: { domains: [], published: false, traefikConfigFile: '' },
           editingLanding: null,
           addEditor: null,
           editEditor: null,
@@ -285,6 +364,7 @@
       },
       mounted() {
         this.loadLandings();
+        this.loadAdminConfig();
       },
       methods: {
         showError(message) {
@@ -301,6 +381,14 @@
             this.landings = await res.json();
           } catch (err) {
             this.showError('Error loading landings: ' + err.message);
+          }
+        },
+        async loadAdminConfig() {
+          try {
+            const res = await fetch('/api/admin-config');
+            this.adminConfig = await res.json();
+          } catch (err) {
+            this.showError('Error loading admin config: ' + err.message);
           }
         },
         formatDate(dateStr) {
@@ -411,7 +499,7 @@
         async publishLanding(id) {
           if (!confirm('Publish this landing to Traefik? Make sure Traefik is configured in .env')) return;
           
-          this.$set(this.loading, id, true);
+          this.loading[id] = true;
           try {
             const res = await fetch(`/api/landings/${id}/publish`, { method: 'POST' });
             const data = await res.json();
@@ -423,13 +511,13 @@
           } catch (err) {
             this.showError('Error publishing: ' + err.message);
           } finally {
-            this.$set(this.loading, id, false);
+            this.loading[id] = false;
           }
         },
         async unpublishLanding(id) {
           if (!confirm('Unpublish this landing from Traefik?')) return;
           
-          this.$set(this.loading, id, true);
+          this.loading[id] = true;
           try {
             const res = await fetch(`/api/landings/${id}/unpublish`, { method: 'POST' });
             const data = await res.json();
@@ -441,7 +529,7 @@
           } catch (err) {
             this.showError('Error unpublishing: ' + err.message);
           } finally {
-            this.$set(this.loading, id, false);
+            this.loading[id] = false;
           }
         },
         async deleteLanding(id) {
@@ -455,6 +543,60 @@
             this.loadLandings();
           } catch (err) {
             this.showError('Error deleting landing: ' + err.message);
+          }
+        },
+        async saveAdminDomains() {
+          try {
+            const domains = this.adminConfig.domains.filter(d => d.trim());
+            const res = await fetch('/api/admin-config/domains', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ domains })
+            });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error);
+            
+            this.showSuccess('Admin domains updated successfully!');
+            this.loadAdminConfig();
+          } catch (err) {
+            this.showError('Error updating admin domains: ' + err.message);
+          }
+        },
+        async publishAdmin() {
+          if (!confirm('Publish admin to Traefik? Make sure Traefik is configured in .env')) return;
+          
+          this.loading.admin = true;
+          try {
+            const res = await fetch('/api/admin-config/publish', { method: 'POST' });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error);
+            
+            this.showSuccess(data.message);
+            this.loadAdminConfig();
+          } catch (err) {
+            this.showError('Error publishing admin: ' + err.message);
+          } finally {
+            this.loading.admin = false;
+          }
+        },
+        async unpublishAdmin() {
+          if (!confirm('Unpublish admin from Traefik?')) return;
+          
+          this.loading.admin = true;
+          try {
+            const res = await fetch('/api/admin-config/unpublish', { method: 'POST' });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error);
+            
+            this.showSuccess(data.message);
+            this.loadAdminConfig();
+          } catch (err) {
+            this.showError('Error unpublishing admin: ' + err.message);
+          } finally {
+            this.loading.admin = false;
           }
         },
         initAddEditor() {

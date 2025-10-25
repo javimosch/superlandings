@@ -87,7 +87,7 @@ const adminAuth = basicAuth({
   challenge: true
 });
 
-// Admin panel routes
+// Admin panel route
 app.get('/admin', adminAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
@@ -95,6 +95,187 @@ app.get('/admin', adminAuth, (req, res) => {
 app.get('/api/landings', adminAuth, (req, res) => {
   const db = readDB();
   res.json(db.landings);
+});
+
+app.get('/api/admin-config', adminAuth, (req, res) => {
+  const db = readDB();
+  res.json(db.adminConfig || { domains: [], published: false, traefikConfigFile: '' });
+});
+
+app.put('/api/admin-config/domains', adminAuth, (req, res) => {
+  try {
+    const { domains } = req.body;
+    const db = readDB();
+    
+    if (!db.adminConfig) {
+      db.adminConfig = { domains: [], published: false, traefikConfigFile: '' };
+    }
+
+    if (db.adminConfig.published) {
+      return res.status(400).json({ error: 'Cannot change domains of published admin. Unpublish first.' });
+    }
+
+    if (!Array.isArray(domains)) {
+      return res.status(400).json({ error: 'Domains must be an array' });
+    }
+
+    console.log(`🌐 Updating admin domains: [${db.adminConfig.domains?.join(', ')}] -> [${domains.join(', ')}]`);
+
+    db.adminConfig.domains = domains;
+    writeDB(db);
+
+    console.log(`✅ Admin domains updated successfully`);
+
+    res.json({ success: true, adminConfig: db.adminConfig });
+  } catch (error) {
+    console.error('❌ Error updating admin domains:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin-config/publish', adminAuth, async (req, res) => {
+  try {
+    const db = readDB();
+    
+    if (!db.adminConfig) {
+      db.adminConfig = { domains: [], published: false, traefikConfigFile: '' };
+    }
+
+    if (!db.adminConfig.domains || db.adminConfig.domains.length === 0) {
+      return res.status(400).json({ error: 'At least one domain is required before publishing' });
+    }
+
+    console.log(`🚀 Publishing admin to domains: ${db.adminConfig.domains.join(', ')}`);
+
+    // Generate Traefik config for admin
+    const serviceName = 'superlandings-admin';
+    const hostRules = db.adminConfig.domains.map(d => `Host(\`${d}\`)`).join(' || ');
+    
+    const config = `http:
+  routers:
+    ${serviceName}:
+      entryPoints:
+        - https
+      service: ${serviceName}
+      rule: ${hostRules}
+      tls:
+        certresolver: letsencrypt
+  services:
+    ${serviceName}:
+      loadBalancer:
+        servers:
+          - url: '${process.env.SERVER_IP}'
+`;
+
+    const configFileName = 'superlandings-admin.yml';
+    const localConfigPath = path.join(DATA_DIR, 'traefik', configFileName);
+    
+    const traefikDir = path.join(DATA_DIR, 'traefik');
+    if (!fs.existsSync(traefikDir)) {
+      fs.mkdirSync(traefikDir, { recursive: true });
+    }
+
+    fs.writeFileSync(localConfigPath, config);
+    console.log(`✅ Generated Traefik config: ${localConfigPath}`);
+
+    // Deploy to remote
+    if (process.env.TRAEFIK_ENABLED === 'true') {
+      validateTraefikEnv();
+      
+      const remoteHost = process.env.TRAEFIK_REMOTE_HOST;
+      const remoteUser = process.env.TRAEFIK_REMOTE_USER;
+      const remotePort = process.env.TRAEFIK_REMOTE_PORT;
+      const remotePath = process.env.TRAEFIK_REMOTE_PATH;
+      const remoteFile = `${remotePath}/${configFileName}`;
+
+      console.log(`📦 Deploying to ${remoteUser}@${remoteHost}:${remoteFile}`);
+
+      try {
+        await execCommand('ssh', ['-p', remotePort, `${remoteUser}@${remoteHost}`, `mkdir -p ${remotePath}`]);
+        console.log(`✅ Remote directory verified`);
+
+        await execCommand('scp', ['-P', remotePort, localConfigPath, `${remoteUser}@${remoteHost}:${remoteFile}`]);
+        console.log(`✅ Config deployed to remote Traefik server`);
+
+        const { stdout } = await execCommand('ssh', ['-p', remotePort, `${remoteUser}@${remoteHost}`, `ls -la ${remoteFile}`]);
+        console.log(`✅ Verification: ${stdout.trim()}`);
+      } catch (error) {
+        console.error(`❌ SSH/SCP Error: ${error.message}`);
+        throw new Error(`Failed to deploy config via SSH. Ensure SSH key authentication is configured and you have access to ${remoteHost}`);
+      }
+    }
+    
+    db.adminConfig.published = true;
+    db.adminConfig.traefikConfigFile = configFileName;
+    writeDB(db);
+
+    const domainUrls = db.adminConfig.domains.map(d => `https://${d}`).join(', ');
+    console.log(`✅ Admin published successfully: ${domainUrls}`);
+
+    res.json({ 
+      success: true, 
+      message: `Admin published to: ${domainUrls}`,
+      adminConfig: db.adminConfig
+    });
+  } catch (error) {
+    console.error('❌ Error publishing admin:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin-config/unpublish', adminAuth, async (req, res) => {
+  try {
+    const db = readDB();
+    
+    if (!db.adminConfig || !db.adminConfig.published) {
+      return res.status(400).json({ error: 'Admin is not published' });
+    }
+
+    console.log(`📤 Unpublishing admin`);
+
+    const configFileName = db.adminConfig.traefikConfigFile || 'superlandings-admin.yml';
+    const localConfigPath = path.join(DATA_DIR, 'traefik', configFileName);
+
+    if (fs.existsSync(localConfigPath)) {
+      fs.unlinkSync(localConfigPath);
+      console.log(`✅ Removed local Traefik config: ${localConfigPath}`);
+    }
+
+    if (process.env.TRAEFIK_ENABLED === 'true') {
+      validateTraefikEnv();
+      
+      const remoteHost = process.env.TRAEFIK_REMOTE_HOST;
+      const remoteUser = process.env.TRAEFIK_REMOTE_USER;
+      const remotePort = process.env.TRAEFIK_REMOTE_PORT;
+      const remotePath = process.env.TRAEFIK_REMOTE_PATH;
+      const remoteFile = `${remotePath}/${configFileName}`;
+
+      console.log(`🗑️  Removing from ${remoteUser}@${remoteHost}:${remoteFile}`);
+
+      try {
+        await execCommand('ssh', ['-p', remotePort, `${remoteUser}@${remoteHost}`, `rm -f ${remoteFile}`]);
+        console.log(`✅ Config removed from remote Traefik server`);
+      } catch (error) {
+        console.error(`❌ SSH Error: ${error.message}`);
+        throw new Error(`Failed to remove config via SSH. Ensure you have access to ${remoteHost}`);
+      }
+    }
+    
+    db.adminConfig.published = false;
+    db.adminConfig.traefikConfigFile = '';
+    writeDB(db);
+
+    console.log(`✅ Admin unpublished successfully`);
+
+    res.json({ 
+      success: true, 
+      message: 'Admin unpublished successfully',
+      adminConfig: db.adminConfig
+    });
+  } catch (error) {
+    console.error('❌ Error unpublishing admin:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/landings', adminAuth, upload.array('files'), async (req, res) => {
@@ -237,16 +418,15 @@ function generateTraefikConfig(landing) {
       entryPoints:
         - https
       service: ${serviceName}
-      rule: (${hostRules}) && PathPrefix(\`/${landing.slug}\`)
+      rule: ${hostRules}
       middlewares:
-        - ${serviceName}-strip
+        - ${serviceName}-addprefix
       tls:
         certresolver: letsencrypt
   middlewares:
-    ${serviceName}-strip:
-      stripPrefix:
-        prefixes:
-          - /${landing.slug}
+    ${serviceName}-addprefix:
+      addPrefix:
+        prefix: /${landing.slug}
   services:
     ${serviceName}:
       loadBalancer:
@@ -490,28 +670,28 @@ app.delete('/api/landings/:id', adminAuth, async (req, res) => {
   }
 });
 
-// Home route
-app.get('/', (req, res) => {
-  res.send(`
-    <html>
-      <head><title>SuperLandings</title></head>
-      <body style="font-family: system-ui; max-width: 800px; margin: 50px auto; padding: 20px;">
-        <h1>SuperLandings</h1>
-        <p>Welcome to SuperLandings - Multi-landing page server</p>
-        <p><a href="/admin">Go to Admin Panel</a></p>
-      </body>
-    </html>
-  `);
-});
-
-app.listen(PORT, () => {
-  console.log(`SuperLandings server running on http://localhost:${PORT}`);
-  console.log(`Admin panel: http://localhost:${PORT}/admin`);
-  console.log(`Username: ${process.env.ADMIN_USERNAME}`);
-  console.log(`Password: ${process.env.ADMIN_PASSWORD}`);
-});
-
 // Serve static assets for static landings (must be before /:slug route)
+// Handle static assets for domain-based routing
+app.use('/*', (req, res, next) => {
+  const host = req.get('host');
+  if (!host) return next();
+  
+  const db = readDB();
+  
+  // Check if this host matches any published static landing domain
+  const landing = db.landings.find(l => 
+    l.published && l.type === 'static' && l.domains && l.domains.some(domain => 
+      domain === host || domain === host.replace(/:\d+$/, '')
+    )
+  );
+  
+  if (landing) {
+    express.static(path.join(LANDINGS_DIR, landing.slug))(req, res, next);
+  } else {
+    next();
+  }
+});
+
 app.use('/:slug/*', (req, res, next) => {
   const { slug } = req.params;
   const db = readDB();
@@ -524,7 +704,50 @@ app.use('/:slug/*', (req, res, next) => {
   }
 });
 
-// Landing page routes (MUST BE LAST to avoid catching /admin and /api routes)
+// Domain-based routing for landing pages (fallback if Traefik addPrefix fails)
+app.get('/', (req, res, next) => {
+  try {
+    const host = req.get('host');
+    if (!host) return next();
+    
+    const db = readDB();
+    
+    // Check if this host matches any published landing domain
+    const landing = db.landings.find(l => 
+      l.published && l.domains && l.domains.some(domain => 
+        domain === host || domain === host.replace(/:\d+$/, '')
+      )
+    );
+    
+    if (!landing) return next();
+
+    const landingDir = path.join(LANDINGS_DIR, landing.slug);
+
+    if (landing.type === 'html') {
+      return res.sendFile(path.join(landingDir, 'index.html'));
+    } else if (landing.type === 'static') {
+      return res.sendFile(path.join(landingDir, 'index.html'));
+    } else if (landing.type === 'ejs') {
+      return res.render(path.join(landing.slug, 'index'));
+    }
+  } catch (error) {
+    console.error('Error serving landing:', error);
+    res.status(500).send('Error loading landing page');
+  }
+});
+
+// Default admin route (MUST BE AFTER domain-based landing routes)
+app.get('/', adminAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(`SuperLandings server running on http://localhost:${PORT}`);
+  console.log(`Admin panel: http://localhost:${PORT}/admin`);
+  console.log(`Username: ${process.env.ADMIN_USERNAME}`);
+  console.log(`Password: ${process.env.ADMIN_PASSWORD}`);
+});
+
 app.get('/:slug', (req, res) => {
   try {
     const { slug } = req.params;

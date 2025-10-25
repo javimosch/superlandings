@@ -2,8 +2,9 @@ services:
   superlandings:
     #build: .
     image: node:20.17.0-alpine
-    ports:
-      - "3000:3000"
+    container_name: superlandings
+    expose:
+      - "3000"
     environment:
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
@@ -15,6 +16,7 @@ services:
     restart: unless-stopped
     networks:
       - coolify-shared
+    command: ["npm", "start"]
 
 volumes:
   landing-data:
