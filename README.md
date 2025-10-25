@@ -24,6 +24,11 @@ A Node.js server for managing and serving multiple landing pages with different 
   - Docker Compose configuration
   - Persistent data storage
 
+- 🌐 **Traefik Integration**
+  - Publish/unpublish per-landing to custom domains via Traefik
+  - Multiple domains per landing supported
+  - Admin and landings can be published independently
+
 ## Installation
 
 ### Local Development
@@ -134,6 +139,11 @@ SuperLandings can automatically deploy Traefik configurations for each landing, 
 
 All operations are logged to help troubleshoot deployment issues.
 
+Notes:
+- Uses Traefik addPrefix to forward requests to `/:slug`; `SERVER_IP` should NOT include the slug.
+- You cannot change domains while a landing or the admin is published — unpublish first.
+- Multiple domains are supported (OR rule in Traefik router).
+
 For detailed Traefik setup instructions, see [TRAEFIK_SETUP.md](./TRAEFIK_SETUP.md).
 
 ### Data Structure
@@ -168,15 +178,19 @@ When using Docker, data persists in a named volume: `landing-data`
 - `POST /api/landings` - Create new landing
 - `GET /api/landings/:id/content` - Get HTML content
 - `PUT /api/landings/:id` - Update HTML content
-- `PUT /api/landings/:id/domain` - Update landing domain
+- `PUT /api/landings/:id/domains` - Update landing domains (unpublish required to change)
 - `POST /api/landings/:id/publish` - Publish landing to Traefik
 - `POST /api/landings/:id/unpublish` - Unpublish landing from Traefik
 - `DELETE /api/landings/:id` - Delete landing (auto-unpublishes if needed)
+- `GET /api/admin-config` - Get admin Traefik config
+- `PUT /api/admin-config/domains` - Update admin domains (unpublish required to change)
+- `POST /api/admin-config/publish` - Publish admin to Traefik
+- `POST /api/admin-config/unpublish` - Unpublish admin from Traefik
 
 ### Public Routes
 
-- `GET /` - Home page
-- `GET /:slug` - View landing page
+- `GET /` - Domain-based landing resolution for published domains (fallback when using Traefik)
+- `GET /:slug` - View landing page by slug
 
 ## Examples
 

@@ -1,14 +1,14 @@
 {
   "name": "superlandings",
   "version": "1.0.0",
-  "description": "Node.js server for managing multiple landing pages",
+  "description": "Manage and publish multiple landing pages (HTML, static, EJS) with admin panel, Traefik custom domains, CLI, and Docker.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
     "cli": "node cli.js"
   },
-  "keywords": ["landing", "pages", "cms"],
+  "keywords": ["landing pages", "static sites", "ejs", "traefik", "reverse-proxy", "custom domains", "admin panel", "cms", "docker", "docker-compose", "publishing"],
   "author": "",
   "license": "MIT",
   "dependencies": {
