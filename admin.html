@@ -29,10 +29,12 @@
             <div v-if="adminConfig.domains && adminConfig.domains.length > 0" class="text-sm">
               <span class="text-blue-100">Admin domains:</span>
               <template v-if="adminConfig.published">
-                <a v-for="(domain, idx) in adminConfig.domains" :key="idx" :href="'https://' + domain" target="_blank" class="ml-2 hover:text-white underline">{{ domain }}</a>
+                <template v-for="(domainObj, idx) in adminConfig.domains.filter(d => d.published)" :key="idx">
+                  <a :href="'https://' + domainObj.domain" target="_blank" class="ml-2 hover:text-white underline">{{ domainObj.domain }}</a><span v-if="idx < adminConfig.domains.filter(d => d.published).length - 1">,</span>
+                </template>
               </template>
               <template v-else>
-                <span class="ml-2">{{ adminConfig.domains.join(', ') }}</span>
+                <span class="ml-2">{{ adminConfig.domains.map(d => d.domain).join(', ') }}</span>
               </template>
             </div>
             <button @click="showAdminDomainsModal = true" class="px-4 py-2 bg-blue-500 hover:bg-blue-400 rounded-lg transition text-sm font-medium">
@@ -76,7 +78,10 @@
                   <span v-if="landing.domains && landing.domains.length > 0" class="text-xs text-gray-600">
                     🌐 
                     <template v-if="landing.published">
-                      <a v-for="(domain, idx) in landing.domains" :key="idx" :href="'https://' + domain" target="_blank" class="hover:text-blue-600 underline">{{ domain }}</a><span v-if="idx < landing.domains.length - 1">, </span>
+                      <template v-for="(domainObj, idx) in landing.domains.filter(d => d.published)" :key="idx">
+                        <a :href="'https://' + domainObj.domain" target="_blank" class="text-green-600 hover:text-blue-600 underline">{{ domainObj.domain }}</a><span v-if="idx < landing.domains.filter(d => d.published).length - 1">, </span>
+                      </template>
+                      <span v-if="landing.domains.some(d => !d.published)" class="text-gray-400 ml-1">({{ landing.domains.filter(d => !d.published).length }} unpublished)</span>
                     </template>
                     <template v-else>
                       {{ landing.domains.length }} domain{{ landing.domains.length > 1 ? 's' : '' }}
@@ -247,7 +252,7 @@
 
     <!-- Domains Modal -->
     <div v-if="showDomainsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
+      <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
           <h3 class="text-xl font-semibold text-gray-900">Configure Domains</h3>
           <button @click="closeDomainsModal" class="text-gray-500 hover:text-gray-700">
@@ -262,22 +267,31 @@
             <p class="text-sm text-gray-600 mb-4">Landing: <strong>{{ editingDomains?.name }}</strong></p>
             <label class="block text-sm font-medium text-gray-700 mb-2">Domains</label>
             <div class="space-y-2 mb-3">
-              <div v-for="(domain, index) in editingDomains.domains" :key="index" class="flex gap-2">
-                <input v-model="editingDomains.domains[index]" type="text" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="example.com">
-                <button @click="editingDomains.domains.splice(index, 1)" type="button" class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
+              <div v-for="(domainObj, index) in editingDomains.domains" :key="index" class="flex gap-2 items-center">
+                <input v-model="domainObj.domain" type="text" pattern="[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="example.com" title="Enter a valid domain (e.g., example.com)">
+                <button v-if="domainObj.published" @click="unpublishSingleDomain(domainObj.domain)" :disabled="loading[editingDomains.id + '-' + domainObj.domain]" type="button" class="px-3 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                  <span v-if="loading[editingDomains.id + '-' + domainObj.domain]">⏳</span>
+                  <span v-else>Unpub</span>
+                </button>
+                <button v-else @click="publishSingleDomain(domainObj.domain)" :disabled="loading[editingDomains.id + '-' + domainObj.domain] || !domainObj.domain.trim()" type="button" class="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                  <span v-if="loading[editingDomains.id + '-' + domainObj.domain]">⏳</span>
+                  <span v-else>Pub</span>
+                </button>
+                <span v-if="domainObj.published" class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">✓</span>
+                <button @click="removeDomain(index)" type="button" class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
                   ✕
                 </button>
               </div>
-              <button @click="editingDomains.domains.push('')" type="button" class="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition">
+              <button @click="addDomain" type="button" class="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition">
                 + Add Domain
               </button>
             </div>
-            <p class="mt-2 text-sm text-gray-500">Configure multiple domains before publishing to Traefik. All domains will route to this landing.</p>
-            <p v-if="editingDomains.published" class="mt-2 text-sm text-orange-600">⚠️ Landing is currently published. Unpublish before changing domains.</p>
+            <p class="mt-2 text-sm text-gray-500">Configure multiple domains. Publish/unpublish each domain individually or use the buttons below for all at once.</p>
+            <p v-if="editingDomains.published" class="mt-2 text-sm text-blue-600">ℹ️ Landing is currently published. You can publish/unpublish individual domains without affecting others.</p>
           </div>
 
           <div class="flex gap-3">
-            <button @click="saveDomains" :disabled="editingDomains.published" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed">
+            <button @click="saveDomains" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
               Save Domains
             </button>
             <button @click="closeDomainsModal" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold">
@@ -305,22 +319,23 @@
             <p class="text-sm text-gray-600 mb-4">Configure domains to access the admin panel via Traefik</p>
             <label class="block text-sm font-medium text-gray-700 mb-2">Domains</label>
             <div class="space-y-2 mb-3">
-              <div v-for="(domain, index) in adminConfig.domains" :key="index" class="flex gap-2">
-                <input v-model="adminConfig.domains[index]" type="text" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="admin.example.com">
+              <div v-for="(domainObj, index) in adminConfig.domains" :key="index" class="flex gap-2">
+                <input v-model="domainObj.domain" type="text" pattern="[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="admin.example.com" title="Enter a valid domain (e.g., admin.example.com)">
+                <span v-if="domainObj.published" class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs flex items-center">✓</span>
                 <button @click="adminConfig.domains.splice(index, 1)" type="button" class="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
                   ✕
                 </button>
               </div>
-              <button @click="adminConfig.domains.push('')" type="button" class="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition">
+              <button @click="adminConfig.domains.push({ domain: '', published: false })" type="button" class="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-blue-500 hover:text-blue-600 transition">
                 + Add Domain
               </button>
             </div>
             <p class="mt-2 text-sm text-gray-500">All domains will route to the admin panel (/admin)</p>
-            <p v-if="adminConfig.published" class="mt-2 text-sm text-orange-600">⚠️ Admin is currently published. Unpublish before changing domains.</p>
+            <p v-if="adminConfig.published" class="mt-2 text-sm text-blue-600">ℹ️ Admin is currently published. Changes will require republishing to take effect.</p>
           </div>
 
           <div class="flex gap-3 mb-3">
-            <button @click="saveAdminDomains" :disabled="adminConfig.published" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed">
+            <button @click="saveAdminDomains" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
               Save Domains
             </button>
           </div>
@@ -408,7 +423,11 @@
             formData.append('name', this.newLanding.name);
             formData.append('slug', this.newLanding.slug);
             formData.append('type', this.newLanding.type);
-            formData.append('domains', JSON.stringify(this.newLanding.domains.filter(d => d.trim())));
+            // Convert string domains to object format for new landings
+            const domains = this.newLanding.domains
+              .filter(d => typeof d === 'string' ? d.trim() : d.domain && d.domain.trim())
+              .map(d => typeof d === 'string' ? { domain: d.trim(), published: false } : d);
+            formData.append('domains', JSON.stringify(domains));
 
             if (this.newLanding.type === 'html') {
               formData.append('content', this.addEditor ? this.addEditor.getValue() : this.newLanding.content);
@@ -470,16 +489,78 @@
           }
         },
         openDomainsModal(landing) {
-          this.editingDomains = { ...landing, domains: [...(landing.domains || [])] };
+          // Deep copy to avoid mutating the original
+          this.editingDomains = { 
+            ...landing, 
+            domains: landing.domains.map(d => ({ ...d })) 
+          };
           this.showDomainsModal = true;
         },
         closeDomainsModal() {
           this.showDomainsModal = false;
           this.editingDomains = null;
         },
+        addDomain() {
+          this.editingDomains.domains.push({ domain: '', published: false });
+        },
+        removeDomain(index) {
+          this.editingDomains.domains.splice(index, 1);
+        },
+        async publishSingleDomain(domain) {
+          const loadingKey = this.editingDomains.id + '-' + domain;
+          this.loading[loadingKey] = true;
+          try {
+            const res = await fetch(`/api/landings/${this.editingDomains.id}/domains/${encodeURIComponent(domain)}/publish`, { method: 'POST' });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error);
+            
+            this.showSuccess(data.message);
+            await this.loadLandings();
+            // Update the editingDomains to reflect the change
+            const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
+            if (domainObj) domainObj.published = true;
+          } catch (err) {
+            this.showError('Error publishing domain: ' + err.message);
+          } finally {
+            this.loading[loadingKey] = false;
+          }
+        },
+        async unpublishSingleDomain(domain) {
+          const loadingKey = this.editingDomains.id + '-' + domain;
+          this.loading[loadingKey] = true;
+          try {
+            const res = await fetch(`/api/landings/${this.editingDomains.id}/domains/${encodeURIComponent(domain)}/unpublish`, { method: 'POST' });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error);
+            
+            this.showSuccess(data.message);
+            await this.loadLandings();
+            // Update the editingDomains to reflect the change
+            const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
+            if (domainObj) domainObj.published = false;
+          } catch (err) {
+            this.showError('Error unpublishing domain: ' + err.message);
+          } finally {
+            this.loading[loadingKey] = false;
+          }
+        },
         async saveDomains() {
           try {
-            const domains = this.editingDomains.domains.filter(d => d.trim());
+            // Validate and filter domains
+            const domainPattern = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            const domains = this.editingDomains.domains
+              .filter(d => d.domain && d.domain.trim())
+              .map(d => ({ domain: d.domain.trim(), published: d.published || false }));
+            
+            // Check for invalid domains
+            const invalidDomains = domains.filter(d => !domainPattern.test(d.domain));
+            if (invalidDomains.length > 0) {
+              this.showError('Invalid domain format: ' + invalidDomains.map(d => d.domain).join(', '));
+              return;
+            }
+            
             const res = await fetch(`/api/landings/${this.editingDomains.id}/domains`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
@@ -547,7 +628,19 @@
         },
         async saveAdminDomains() {
           try {
-            const domains = this.adminConfig.domains.filter(d => d.trim());
+            // Validate and filter domains
+            const domainPattern = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            const domains = this.adminConfig.domains
+              .filter(d => d.domain && d.domain.trim())
+              .map(d => ({ domain: d.domain.trim(), published: d.published || false }));
+            
+            // Check for invalid domains
+            const invalidDomains = domains.filter(d => !domainPattern.test(d.domain));
+            if (invalidDomains.length > 0) {
+              this.showError('Invalid domain format: ' + invalidDomains.map(d => d.domain).join(', '));
+              return;
+            }
+            
             const res = await fetch('/api/admin-config/domains', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },

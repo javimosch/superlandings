@@ -60,6 +60,30 @@ function writeDB(data) {
   fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
 }
 
+// Helper to migrate old domain format to new format
+function migrateDomains(domains) {
+  if (!domains) return [];
+  if (domains.length === 0) return [];
+  // If already in new format (array of objects), return as is
+  if (typeof domains[0] === 'object' && domains[0].hasOwnProperty('domain')) {
+    return domains;
+  }
+  // Migrate from old format (array of strings) to new format
+  return domains.map(d => ({ domain: d, published: false }));
+}
+
+// Helper to get all published domains
+function getPublishedDomains(domains) {
+  const migratedDomains = migrateDomains(domains);
+  return migratedDomains.filter(d => d.published).map(d => d.domain);
+}
+
+// Helper to get all domain strings (for backward compatibility)
+function getAllDomainStrings(domains) {
+  const migratedDomains = migrateDomains(domains);
+  return migratedDomains.map(d => d.domain);
+}
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -94,12 +118,20 @@ app.get('/admin', adminAuth, (req, res) => {
 
 app.get('/api/landings', adminAuth, (req, res) => {
   const db = readDB();
-  res.json(db.landings);
+  // Migrate domains to new format for each landing
+  const landings = db.landings.map(landing => ({
+    ...landing,
+    domains: migrateDomains(landing.domains || [])
+  }));
+  res.json(landings);
 });
 
 app.get('/api/admin-config', adminAuth, (req, res) => {
   const db = readDB();
-  res.json(db.adminConfig || { domains: [], published: false, traefikConfigFile: '' });
+  const adminConfig = db.adminConfig || { domains: [], published: false, traefikConfigFile: '' };
+  // Migrate domains to new format
+  adminConfig.domains = migrateDomains(adminConfig.domains || []);
+  res.json(adminConfig);
 });
 
 app.put('/api/admin-config/domains', adminAuth, (req, res) => {
@@ -111,17 +143,23 @@ app.put('/api/admin-config/domains', adminAuth, (req, res) => {
       db.adminConfig = { domains: [], published: false, traefikConfigFile: '' };
     }
 
-    if (db.adminConfig.published) {
-      return res.status(400).json({ error: 'Cannot change domains of published admin. Unpublish first.' });
-    }
-
     if (!Array.isArray(domains)) {
       return res.status(400).json({ error: 'Domains must be an array' });
     }
 
-    console.log(`🌐 Updating admin domains: [${db.adminConfig.domains?.join(', ')}] -> [${domains.join(', ')}]`);
+    // Convert to new format if needed
+    const newDomains = domains.map(d => {
+      if (typeof d === 'string') {
+        return { domain: d, published: false };
+      }
+      return d;
+    });
 
-    db.adminConfig.domains = domains;
+    const oldDomainStrings = getAllDomainStrings(db.adminConfig.domains || []);
+    const newDomainStrings = newDomains.map(d => d.domain);
+    console.log(`🌐 Updating admin domains: [${oldDomainStrings.join(', ')}] -> [${newDomainStrings.join(', ')}]`);
+
+    db.adminConfig.domains = newDomains;
     writeDB(db);
 
     console.log(`✅ Admin domains updated successfully`);
@@ -141,15 +179,22 @@ app.post('/api/admin-config/publish', adminAuth, async (req, res) => {
       db.adminConfig = { domains: [], published: false, traefikConfigFile: '' };
     }
 
-    if (!db.adminConfig.domains || db.adminConfig.domains.length === 0) {
+    // Migrate domains
+    db.adminConfig.domains = migrateDomains(db.adminConfig.domains || []);
+
+    if (db.adminConfig.domains.length === 0) {
       return res.status(400).json({ error: 'At least one domain is required before publishing' });
     }
 
-    console.log(`🚀 Publishing admin to domains: ${db.adminConfig.domains.join(', ')}`);
+    // Mark all domains as published
+    db.adminConfig.domains = db.adminConfig.domains.map(d => ({ ...d, published: true }));
+    
+    const domainStrings = db.adminConfig.domains.map(d => d.domain);
+    console.log(`🚀 Publishing admin to domains: ${domainStrings.join(', ')}`);
 
     // Generate Traefik config for admin
     const serviceName = 'superlandings-admin';
-    const hostRules = db.adminConfig.domains.map(d => `Host(\`${d}\`)`).join(' || ');
+    const hostRules = domainStrings.map(d => `Host(\`${d}\`)`).join(' || ');
     
     const config = `http:
   routers:
@@ -230,6 +275,9 @@ app.post('/api/admin-config/unpublish', adminAuth, async (req, res) => {
     if (!db.adminConfig || !db.adminConfig.published) {
       return res.status(400).json({ error: 'Admin is not published' });
     }
+
+    // Mark all domains as unpublished
+    db.adminConfig.domains = migrateDomains(db.adminConfig.domains || []).map(d => ({ ...d, published: false }));
 
     console.log(`📤 Unpublishing admin`);
 
@@ -403,14 +451,14 @@ function validateTraefikEnv() {
 // Traefik configuration management
 function generateTraefikConfig(landing) {
   const serviceName = `superlandings-${landing.slug}`;
-  const domains = landing.domains || [];
+  const publishedDomains = getPublishedDomains(landing.domains || []);
   
-  if (domains.length === 0) {
-    throw new Error('At least one domain is required');
+  if (publishedDomains.length === 0) {
+    throw new Error('At least one published domain is required');
   }
   
   // Generate Host rule for multiple domains
-  const hostRules = domains.map(d => `Host(\`${d}\`)`).join(' || ');
+  const hostRules = publishedDomains.map(d => `Host(\`${d}\`)`).join(' || ');
   
   const config = `http:
   routers:
@@ -534,11 +582,17 @@ app.post('/api/landings/:id/publish', adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Landing not found' });
     }
 
-    if (!landing.domains || landing.domains.length === 0) {
+    landing.domains = migrateDomains(landing.domains || []);
+
+    if (landing.domains.length === 0) {
       return res.status(400).json({ error: 'At least one domain is required before publishing' });
     }
 
-    console.log(`🚀 Publishing landing: ${landing.name} (${landing.slug}) to domains: ${landing.domains.join(', ')}`);
+    // Mark all domains as published
+    landing.domains = landing.domains.map(d => ({ ...d, published: true }));
+    
+    const domainStrings = landing.domains.map(d => d.domain);
+    console.log(`🚀 Publishing landing: ${landing.name} (${landing.slug}) to domains: ${domainStrings.join(', ')}`);
 
     const configFileName = await deployTraefikConfig(landing);
     
@@ -546,7 +600,7 @@ app.post('/api/landings/:id/publish', adminAuth, async (req, res) => {
     landing.traefikConfigFile = configFileName;
     writeDB(db);
 
-    const domainUrls = landing.domains.map(d => `https://${d}`).join(', ');
+    const domainUrls = landing.domains.map(d => `https://${d.domain}`).join(', ');
     console.log(`✅ Landing published successfully: ${domainUrls}`);
 
     res.json({ 
@@ -576,6 +630,9 @@ app.post('/api/landings/:id/unpublish', adminAuth, async (req, res) => {
 
     console.log(`📤 Unpublishing landing: ${landing.name} (${landing.slug})`);
 
+    // Mark all domains as unpublished
+    landing.domains = migrateDomains(landing.domains || []).map(d => ({ ...d, published: false }));
+
     await removeTraefikConfig(landing);
     
     landing.published = false;
@@ -595,6 +652,109 @@ app.post('/api/landings/:id/unpublish', adminAuth, async (req, res) => {
   }
 });
 
+// Publish specific domain for a landing
+app.post('/api/landings/:id/domains/:domain/publish', adminAuth, async (req, res) => {
+  try {
+    const { id, domain } = req.params;
+    const db = readDB();
+    
+    const landing = db.landings.find(l => l.id === id);
+    if (!landing) {
+      return res.status(404).json({ error: 'Landing not found' });
+    }
+
+    landing.domains = migrateDomains(landing.domains || []);
+    const domainObj = landing.domains.find(d => d.domain === domain);
+    if (!domainObj) {
+      return res.status(404).json({ error: 'Domain not found' });
+    }
+
+    if (domainObj.published) {
+      return res.status(400).json({ error: 'Domain is already published' });
+    }
+
+    console.log(`🚀 Publishing domain ${domain} for landing: ${landing.name}`);
+
+    // Mark domain as published
+    domainObj.published = true;
+    
+    // Regenerate and deploy Traefik config with all published domains
+    const configFileName = await deployTraefikConfig(landing);
+    landing.traefikConfigFile = configFileName;
+    
+    // Update published status if any domain is published
+    landing.published = landing.domains.some(d => d.published);
+    
+    writeDB(db);
+
+    console.log(`✅ Domain ${domain} published successfully`);
+
+    res.json({ 
+      success: true, 
+      message: `Domain ${domain} published successfully`,
+      landing 
+    });
+  } catch (error) {
+    console.error('❌ Error publishing domain:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Unpublish specific domain for a landing
+app.post('/api/landings/:id/domains/:domain/unpublish', adminAuth, async (req, res) => {
+  try {
+    const { id, domain } = req.params;
+    const db = readDB();
+    
+    const landing = db.landings.find(l => l.id === id);
+    if (!landing) {
+      return res.status(404).json({ error: 'Landing not found' });
+    }
+
+    landing.domains = migrateDomains(landing.domains || []);
+    const domainObj = landing.domains.find(d => d.domain === domain);
+    if (!domainObj) {
+      return res.status(404).json({ error: 'Domain not found' });
+    }
+
+    if (!domainObj.published) {
+      return res.status(400).json({ error: 'Domain is not published' });
+    }
+
+    console.log(`📤 Unpublishing domain ${domain} for landing: ${landing.name}`);
+
+    // Mark domain as unpublished
+    domainObj.published = false;
+    
+    // Check if any domains are still published
+    const hasPublishedDomains = landing.domains.some(d => d.published);
+    
+    if (hasPublishedDomains) {
+      // Regenerate Traefik config with remaining published domains
+      const configFileName = await deployTraefikConfig(landing);
+      landing.traefikConfigFile = configFileName;
+    } else {
+      // No published domains left, remove Traefik config
+      await removeTraefikConfig(landing);
+      landing.traefikConfigFile = '';
+    }
+    
+    landing.published = hasPublishedDomains;
+    writeDB(db);
+
+    console.log(`✅ Domain ${domain} unpublished successfully`);
+
+    res.json({ 
+      success: true, 
+      message: `Domain ${domain} unpublished successfully`,
+      landing 
+    });
+  } catch (error) {
+    console.error('❌ Error unpublishing domain:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.put('/api/landings/:id/domains', adminAuth, (req, res) => {
   try {
     const { id } = req.params;
@@ -606,17 +766,26 @@ app.put('/api/landings/:id/domains', adminAuth, (req, res) => {
       return res.status(404).json({ error: 'Landing not found' });
     }
 
-    if (landing.published) {
-      return res.status(400).json({ error: 'Cannot change domains of published landing. Unpublish first.' });
-    }
-
     if (!Array.isArray(domains)) {
       return res.status(400).json({ error: 'Domains must be an array' });
     }
 
-    console.log(`🌐 Updating domains for ${landing.name}: [${landing.domains?.join(', ')}] -> [${domains.join(', ')}]`);
+    // Convert to new format, preserving published status for existing domains
+    const oldDomains = migrateDomains(landing.domains || []);
+    const newDomains = domains.map(d => {
+      if (typeof d === 'string') {
+        // Check if this domain existed before and preserve its published status
+        const existing = oldDomains.find(od => od.domain === d);
+        return { domain: d, published: existing ? existing.published : false };
+      }
+      return d;
+    });
 
-    landing.domains = domains;
+    const oldDomainStrings = oldDomains.map(d => d.domain);
+    const newDomainStrings = newDomains.map(d => d.domain);
+    console.log(`🌐 Updating domains for ${landing.name}: [${oldDomainStrings.join(', ')}] -> [${newDomainStrings.join(', ')}]`);
+
+    landing.domains = newDomains;
     writeDB(db);
 
     console.log(`✅ Domains updated successfully`);
