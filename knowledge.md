@@ -14,28 +14,48 @@ The Traefik integration allows each landing to be published to a custom domain v
 ### Data Model
 
 Each landing has these additional fields:
-- `domains`: Array of custom domains (e.g., ["example.com", "www.example.com"])
-- `published`: Boolean indicating if currently published to Traefik
+- `domains`: Array of domain objects with structure `[{domain: "example.com", published: true}, ...]`
+- `published`: Boolean indicating if any domain is currently published to Traefik
 - `traefikConfigFile`: Filename of the deployed Traefik config
 
-Note: Multiple domains are supported - all domains in the array will route to the same landing.
+Note: 
+- Multiple domains are supported - each can be published/unpublished independently
+- The system supports backward compatibility with old string array format
+- New domains are automatically created with `published: false`
 
 ### Publishing Flow
 
-1. User configures domain in admin panel
-2. User clicks "Publish"
-3. Server generates Traefik YAML config
+#### Publish All Domains
+1. User clicks "Publish" button
+2. All domains are marked as published
+3. Server generates Traefik YAML config with all domains
 4. Config saved locally in `data/traefik/`
 5. Config deployed to remote Traefik server via SSH/SCP
 6. Traefik automatically picks up the config
-7. Domain now routes to the landing
+7. All domains now route to the landing
+
+#### Publish Single Domain
+1. User clicks "Pub" button next to specific domain
+2. That domain is marked as published
+3. Traefik config is regenerated with ALL published domains
+4. Config redeployed to Traefik server
+5. New domain starts routing while existing published domains continue working
 
 ### Unpublishing Flow
 
+#### Unpublish All Domains
 1. User clicks "Unpublish"
-2. Server removes local Traefik config
-3. Server removes remote Traefik config via SSH
-4. Domain stops routing
+2. All domains marked as unpublished
+3. Server removes local Traefik config
+4. Server removes remote Traefik config via SSH
+5. All domains stop routing
+
+#### Unpublish Single Domain
+1. User clicks "Unpub" button next to specific domain
+2. That domain is marked as unpublished
+3. If other domains are still published: Traefik config is regenerated without that domain
+4. If no domains left published: Traefik config is removed entirely
+5. That domain stops routing while other published domains continue working
 
 ### Configuration
 
@@ -73,7 +93,7 @@ http:
       entryPoints:
         - https
       service: superlandings-{slug}
-      rule: Host(`{domain}`)
+      rule: Host(`{domain1}`) || Host(`{domain2}`)
       tls:
         certresolver: letsencrypt
   services:
@@ -83,10 +103,12 @@ http:
           - url: '{SERVER_IP}/{slug}'
 ```
 
+Note: Only domains with `published: true` are included in the Host rule.
+
 ### Security Notes
 
 - Admin authentication required for all publish/unpublish operations
-- Cannot change domain of published landing (must unpublish first)
+- Domains can be changed while landing is published
 - Deleting a landing auto-unpublishes it
 - SSH operations use environment variables, never hardcoded credentials
 - Command injection prevented by using spawn() with argument arrays instead of shell interpolation
@@ -100,3 +122,5 @@ http:
 4. **Loading States**: Admin panel shows loading indicators during publish/unpublish operations
 5. **Toast Notifications**: Replaced alert() with proper toast notifications for better UX
 6. **Domain Validation**: Client-side regex validation for domain format
+7. **Per-Domain Publishing**: Each domain can be published/unpublished independently without affecting others
+8. **Data Migration**: Automatic migration from old string array format to new object format with `domain` and `published` properties
