@@ -102,7 +102,7 @@
                   <span v-if="loading[landing.id]">⏳ Unpublishing...</span>
                   <span v-else>Unpublish</span>
                 </button>
-                <button v-if="landing.type === 'html'" @click="editLanding(landing)" class="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition text-sm font-medium">
+                <button v-if="landing.type === 'html' || landing.type === 'ejs'" @click="editLanding(landing)" class="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition text-sm font-medium">
                   Edit
                 </button>
                 <button @click="deleteLanding(landing.id)" class="px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition text-sm font-medium">
@@ -240,11 +240,11 @@
       </div>
     </div>
 
-    <!-- Edit HTML Modal -->
+    <!-- Edit Modal -->
     <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
         <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
-          <h3 class="text-xl font-semibold text-gray-900">Edit HTML - {{ editingLanding.name }}</h3>
+          <h3 class="text-xl font-semibold text-gray-900">Edit {{ editingLanding.type === 'html' ? 'HTML' : 'EJS Template' }} - {{ editingLanding.name }}</h3>
           <button @click="closeEditModal" class="text-gray-500 hover:text-gray-700">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -252,8 +252,29 @@
           </button>
         </div>
         
-        <div class="p-6 flex-1 overflow-hidden">
+        <div v-if="editingLanding.type === 'html'" class="p-6 flex-1 overflow-hidden">
           <div ref="editEditorContainer" class="h-full"></div>
+        </div>
+
+        <div v-if="editingLanding.type === 'ejs'" class="p-6 space-y-4 flex-1 overflow-y-auto">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Upload EJS Files</label>
+            <input ref="editEjsFileInput" type="file" :multiple="true" accept=".ejs,.html" @change="handleEditEjsFilesChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <p class="mt-1 text-sm text-gray-500">Select one or multiple individual .ejs files.</p>
+
+            <div class="my-4 border-t border-gray-200"></div>
+
+            <label class="block text-sm font-medium text-gray-700 mb-2">Upload EJS Template as ZIP file</label>
+            <input ref="editEjsZipInput" type="file" accept=".zip" @change="handleEditEjsZipChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <p class="mt-1 text-sm text-gray-500">Upload a .zip archive containing your index.ejs (main template) and any related .ejs partials or folders.</p>
+
+            <div v-if="editSelectedEjsFiles.length > 0" class="mt-2 text-sm text-gray-600">
+              Selected EJS Files: {{ editSelectedEjsFiles.map(f => f.name).join(', ') }}
+            </div>
+            <div v-if="editSelectedEjsZip" class="mt-2 text-sm text-gray-600">
+              Selected ZIP File: {{ editSelectedEjsZip.name }}
+            </div>
+          </div>
         </div>
 
         <div class="px-6 py-4 bg-gray-50 border-t flex gap-3">
@@ -384,6 +405,8 @@
           newLanding: { name: '', slug: '', type: 'html', domains: [], content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Landing</title>\n</head>\n<body>\n  <h1>Hello World!</h1>\n</body>\n</html>' },
           selectedEjsFiles: [],
           selectedEjsZip: null,
+          editSelectedEjsFiles: [],
+          editSelectedEjsZip: null,
           editingDomains: null,
           showDomainsModal: false,
           showAdminDomainsModal: false,
@@ -493,14 +516,36 @@
         },
         async saveEdit() {
           try {
-            const content = this.editEditor.getValue();
-            const res = await fetch(`/api/landings/${this.editingLanding.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ content })
-            });
-            
-            if (!res.ok) throw new Error('Failed to save');
+            if (this.editingLanding.type === 'html') {
+              const content = this.editEditor.getValue();
+              const res = await fetch(`/api/landings/${this.editingLanding.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content })
+              });
+              
+              if (!res.ok) throw new Error('Failed to save');
+            } else if (this.editingLanding.type === 'ejs') {
+              // For EJS landings, upload files to replace all existing files
+              const formData = new FormData();
+              if (this.editSelectedEjsZip) {
+                formData.append('files', this.editSelectedEjsZip);
+              } else if (this.editSelectedEjsFiles.length > 0) {
+                this.editSelectedEjsFiles.forEach(file => {
+                  formData.append('files', file);
+                });
+              } else {
+                this.showError('Please select EJS files or a ZIP file to update');
+                return;
+              }
+              
+              const res = await fetch(`/api/landings/${this.editingLanding.id}`, {
+                method: 'PUT',
+                body: formData
+              });
+              
+              if (!res.ok) throw new Error('Failed to save');
+            }
             
             this.showSuccess('Changes saved successfully!');
             this.closeEditModal();
@@ -512,6 +557,8 @@
         closeEditModal() {
           this.showEditModal = false;
           this.editingLanding = null;
+          this.editSelectedEjsFiles = [];
+          this.editSelectedEjsZip = null;
           if (this.editEditor) {
             this.editEditor.toTextArea();
             this.editEditor = null;
@@ -733,6 +780,20 @@
           this.selectedEjsFiles = [];
           if (this.$refs.ejsFileInput) {
             this.$refs.ejsFileInput.value = '';
+          }
+        },
+        handleEditEjsFilesChange(event) {
+          this.editSelectedEjsFiles = Array.from(event.target.files);
+          this.editSelectedEjsZip = null;
+          if (this.$refs.editEjsZipInput) {
+            this.$refs.editEjsZipInput.value = '';
+          }
+        },
+        handleEditEjsZipChange(event) {
+          this.editSelectedEjsZip = event.target.files[0] || null;
+          this.editSelectedEjsFiles = [];
+          if (this.$refs.editEjsFileInput) {
+            this.$refs.editEjsFileInput.value = '';
           }
         },
         initAddEditor() {

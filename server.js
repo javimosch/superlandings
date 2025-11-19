@@ -402,7 +402,7 @@ app.post('/api/landings', adminAuth, upload.array('files'), async (req, res) => 
   }
 });
 
-app.put('/api/landings/:id', adminAuth, (req, res) => {
+app.put('/api/landings/:id', adminAuth, upload.array('files'), (req, res) => {
   try {
     const { id } = req.params;
     const { content } = req.body;
@@ -413,12 +413,39 @@ app.put('/api/landings/:id', adminAuth, (req, res) => {
       return res.status(404).json({ error: 'Landing not found' });
     }
 
+    const landingDir = path.join(LANDINGS_DIR, landing.slug);
+
     if (landing.type === 'html') {
-      const landingDir = path.join(LANDINGS_DIR, landing.slug);
       fs.writeFileSync(path.join(landingDir, 'index.html'), content);
       res.json({ success: true });
+    } else if (landing.type === 'ejs' && req.files.length > 0) {
+      // Clear all existing files in the landing directory first
+      const files = fs.readdirSync(landingDir);
+      for (const file of files) {
+        const filePath = path.join(landingDir, file);
+        if (fs.statSync(filePath).isDirectory()) {
+          fs.rmSync(filePath, { recursive: true });
+        } else {
+          fs.unlinkSync(filePath);
+        }
+      }
+
+      // Check if it's a zip file
+      const zipFile = req.files.find(f => f.originalname.endsWith('.zip'));
+      if (zipFile) {
+        const zip = new AdmZip(zipFile.path);
+        zip.extractAllTo(landingDir, true);
+        fs.unlinkSync(zipFile.path);
+      } else {
+        // Multiple EJS files
+        req.files.forEach(file => {
+          const dest = path.join(landingDir, file.originalname);
+          fs.renameSync(file.path, dest);
+        });
+      }
+      res.json({ success: true });
     } else {
-      res.status(400).json({ error: 'Only HTML landings can be edited this way' });
+      res.status(400).json({ error: 'Only HTML and EJS landings can be edited this way' });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
