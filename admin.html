@@ -204,11 +204,28 @@
             <div ref="addEditorContainer"></div>
           </div>
 
-          <div v-if="newLanding.type === 'static' || newLanding.type === 'ejs'">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              {{ newLanding.type === 'static' ? 'Upload ZIP file or multiple files' : 'Upload EJS files' }}
-            </label>
-            <input ref="fileInput" type="file" :multiple="true" :accept="newLanding.type === 'static' ? '.zip,*' : '.ejs,.html'" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <div v-if="newLanding.type === 'static'">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Upload ZIP file or multiple files</label>
+            <input ref="fileInput" type="file" :multiple="true" accept=".zip,*" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          </div>
+
+          <div v-if="newLanding.type === 'ejs'">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Upload EJS Files</label>
+            <input ref="ejsFileInput" type="file" :multiple="true" accept=".ejs,.html" @change="handleEjsFilesChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <p class="mt-1 text-sm text-gray-500">Select one or multiple individual .ejs files.</p>
+
+            <div class="my-4 border-t border-gray-200"></div>
+
+            <label class="block text-sm font-medium text-gray-700 mb-2">Upload EJS Template as ZIP file</label>
+            <input ref="ejsZipInput" type="file" accept=".zip" @change="handleEjsZipChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <p class="mt-1 text-sm text-gray-500">Upload a .zip archive containing your index.ejs (main template) and any related .ejs partials or folders.</p>
+
+            <div v-if="selectedEjsFiles.length > 0" class="mt-2 text-sm text-gray-600">
+              Selected EJS Files: {{ selectedEjsFiles.map(f => f.name).join(', ') }}
+            </div>
+            <div v-if="selectedEjsZip" class="mt-2 text-sm text-gray-600">
+              Selected ZIP File: {{ selectedEjsZip.name }}
+            </div>
           </div>
 
           <div class="flex gap-3 pt-4">
@@ -365,6 +382,8 @@
           showAddModal: false,
           showEditModal: false,
           newLanding: { name: '', slug: '', type: 'html', domains: [], content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Landing</title>\n</head>\n<body>\n  <h1>Hello World!</h1>\n</body>\n</html>' },
+          selectedEjsFiles: [],
+          selectedEjsZip: null,
           editingDomains: null,
           showDomainsModal: false,
           showAdminDomainsModal: false,
@@ -412,6 +431,8 @@
         closeAddModal() {
           this.showAddModal = false;
           this.newLanding = { name: '', slug: '', type: 'html', domains: [], content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Landing</title>\n</head>\n<body>\n  <h1>Hello World!</h1>\n</body>\n</html>' };
+          this.selectedEjsFiles = [];
+          this.selectedEjsZip = null;
           if (this.addEditor) {
             this.addEditor.toTextArea();
             this.addEditor = null;
@@ -431,6 +452,14 @@
 
             if (this.newLanding.type === 'html') {
               formData.append('content', this.addEditor ? this.addEditor.getValue() : this.newLanding.content);
+            } else if (this.newLanding.type === 'ejs') {
+              if (this.selectedEjsZip) {
+                formData.append('files', this.selectedEjsZip);
+              } else if (this.selectedEjsFiles.length > 0) {
+                this.selectedEjsFiles.forEach(file => {
+                  formData.append('files', file);
+                });
+              }
             } else if (this.$refs.fileInput && this.$refs.fileInput.files.length > 0) {
               Array.from(this.$refs.fileInput.files).forEach(file => {
                 formData.append('files', file);
@@ -690,6 +719,20 @@
             this.showError('Error unpublishing admin: ' + err.message);
           } finally {
             this.loading.admin = false;
+          }
+        },
+        handleEjsFilesChange(event) {
+          this.selectedEjsFiles = Array.from(event.target.files);
+          this.selectedEjsZip = null;
+          if (this.$refs.ejsZipInput) {
+            this.$refs.ejsZipInput.value = '';
+          }
+        },
+        handleEjsZipChange(event) {
+          this.selectedEjsZip = event.target.files[0] || null;
+          this.selectedEjsFiles = [];
+          if (this.$refs.ejsFileInput) {
+            this.$refs.ejsFileInput.value = '';
           }
         },
         initAddEditor() {

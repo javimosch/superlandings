@@ -377,11 +377,19 @@ app.post('/api/landings', adminAuth, upload.array('files'), async (req, res) => 
         });
       }
     } else if (type === 'ejs' && req.files.length > 0) {
-      // EJS template files
-      req.files.forEach(file => {
-        const dest = path.join(landingDir, file.originalname);
-        fs.renameSync(file.path, dest);
-      });
+      // EJS template files - check if it's a zip file
+      const zipFile = req.files.find(f => f.originalname.endsWith('.zip'));
+      if (zipFile) {
+        const zip = new AdmZip(zipFile.path);
+        zip.extractAllTo(landingDir, true);
+        fs.unlinkSync(zipFile.path);
+      } else {
+        // Multiple EJS files
+        req.files.forEach(file => {
+          const dest = path.join(landingDir, file.originalname);
+          fs.renameSync(file.path, dest);
+        });
+      }
     }
 
     db.landings.push(landing);
