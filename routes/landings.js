@@ -4,6 +4,7 @@ const fs = require('fs');
 const AdmZip = require('adm-zip');
 const { readDB, writeDB, LANDINGS_DIR, migrateDomains } = require('../lib/db');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
+const { hasRight } = require('../lib/auth');
 const landingDomainsRouter = require('./landing-domains');
 const landingPublishRouter = require('./landing-publish');
 
@@ -13,10 +14,20 @@ const router = express.Router();
 router.use('/:id/domains', landingDomainsRouter);
 router.use('/:id', landingPublishRouter);
 
-// Get all landings
+// Get all landings (filtered by organization for non-admin users)
 router.get('/', (req, res) => {
   const db = readDB();
-  const landings = db.landings.map(landing => ({
+  let landings = db.landings || [];
+  
+  // Filter by organization if not admin
+  if (!req.adminAuth && req.currentOrganization) {
+    landings = landings.filter(l => l.organizationId === req.currentOrganization.id);
+  } else if (!req.adminAuth && req.userOrganizations) {
+    const orgIds = req.userOrganizations.map(o => o.id);
+    landings = landings.filter(l => orgIds.includes(l.organizationId));
+  }
+  
+  landings = landings.map(landing => ({
     ...landing,
     domains: migrateDomains(landing.domains || [])
   }));
@@ -25,8 +36,13 @@ router.get('/', (req, res) => {
 
 // Create landing
 router.post('/', (req, res) => {
+  // Check permission
+  if (!req.adminAuth && !hasRight(req.currentUser, 'landings:create')) {
+    return res.status(403).json({ error: 'Missing permission: landings:create' });
+  }
+
   try {
-    const { slug, type, name, domains } = req.body;
+    const { slug, type, name, domains, organizationId } = req.body;
     let parsedDomains = [];
     if (domains) {
       try {
@@ -44,11 +60,22 @@ router.post('/', (req, res) => {
     const landingDir = path.join(LANDINGS_DIR, slug);
     if (!fs.existsSync(landingDir)) fs.mkdirSync(landingDir, { recursive: true });
 
+    // Determine organization
+    let orgId = organizationId;
+    if (!req.adminAuth) {
+      // Non-admin must use current organization
+      if (!req.currentOrganization) {
+        return res.status(400).json({ error: 'No organization selected' });
+      }
+      orgId = req.currentOrganization.id;
+    }
+
     const landing = {
       id: Date.now().toString(),
       slug,
       name,
       type,
+      organizationId: orgId || null,
       domains: Array.isArray(parsedDomains) ? parsedDomains : [],
       published: false,
       traefikConfigFile: '',
@@ -96,6 +123,11 @@ router.post('/', (req, res) => {
 
 // Update landing
 router.put('/:id', (req, res) => {
+  // Check permission
+  if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
+    return res.status(403).json({ error: 'Missing permission: landings:update' });
+  }
+
   try {
     const { id } = req.params;
     const { content } = req.body;
@@ -168,6 +200,11 @@ router.get('/:id/content', (req, res) => {
 
 // Update domains
 router.put('/:id/domains', (req, res) => {
+  // Check permission
+  if (!req.adminAuth && !hasRight(req.currentUser, 'landings:domains')) {
+    return res.status(403).json({ error: 'Missing permission: landings:domains' });
+  }
+
   try {
     const { id } = req.params;
     const { domains } = req.body;
@@ -209,6 +246,11 @@ router.put('/:id/domains', (req, res) => {
 
 // Delete landing
 router.delete('/:id', async (req, res) => {
+  // Check permission
+  if (!req.adminAuth && !hasRight(req.currentUser, 'landings:delete')) {
+    return res.status(403).json({ error: 'Missing permission: landings:delete' });
+  }
+
   try {
     const { id } = req.params;
     const db = readDB();

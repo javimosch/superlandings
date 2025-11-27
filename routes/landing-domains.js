@@ -1,11 +1,17 @@
 const express = require('express');
 const { readDB, writeDB, migrateDomains } = require('../lib/db');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
+const { hasRight } = require('../lib/auth');
 
 const router = express.Router({ mergeParams: true });
 
 // Publish specific domain
 router.post('/:domain/publish', async (req, res) => {
+  // Check permission
+  if (!req.adminAuth && !hasRight(req.currentUser, 'landings:domains')) {
+    return res.status(403).json({ error: 'Missing permission: landings:domains' });
+  }
+
   try {
     const { id, domain } = req.params;
     const db = readDB();
@@ -50,6 +56,11 @@ router.post('/:domain/publish', async (req, res) => {
 
 // Unpublish specific domain
 router.post('/:domain/unpublish', async (req, res) => {
+  // Check permission
+  if (!req.adminAuth && !hasRight(req.currentUser, 'landings:domains')) {
+    return res.status(403).json({ error: 'Missing permission: landings:domains' });
+  }
+
   try {
     const { id, domain } = req.params;
     const db = readDB();
