@@ -64,6 +64,13 @@
         showDeleteConfirm: false,
         confirmingVersion: null,
         
+        // Version editing
+        editingVersionDescription: false,
+        editingVersionTag: false,
+        editingVersionId: null,
+        tempDescription: '',
+        tempTag: '',
+        
         // Diff Modal
         showDiffModal: false,
         diffData: null,
@@ -872,6 +879,85 @@
         const sizes = ['B', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      },
+      
+      // Version editing
+      startEditDescription(version) {
+        this.editingVersionId = version.id;
+        this.tempDescription = version.description || '';
+        this.editingVersionDescription = true;
+        this.$nextTick(() => {
+          const input = this.$refs[`desc-input-${version.id}`][0];
+          if (input) input.focus();
+        });
+      },
+      
+      async saveDescription() {
+        if (!this.editingVersionId) return;
+        
+        try {
+          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions/${this.editingVersionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: this.tempDescription })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          
+          this.showSuccess('Description updated!');
+          await this.loadVersions();
+          this.cancelEditDescription();
+        } catch (err) {
+          this.showError('Error updating description: ' + err.message);
+        }
+      },
+      
+      cancelEditDescription() {
+        this.editingVersionDescription = false;
+        this.editingVersionId = null;
+        this.tempDescription = '';
+      },
+      
+      startEditTag(version) {
+        this.editingVersionId = version.id;
+        this.tempTag = version.tag || '';
+        this.editingVersionTag = true;
+        this.$nextTick(() => {
+          const input = this.$refs[`tag-input-${version.id}`][0];
+          if (input) input.focus();
+        });
+      },
+      
+      async saveTag() {
+        if (!this.editingVersionId) return;
+        
+        try {
+          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions/${this.editingVersionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag: this.tempTag.trim() || null })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          
+          this.showSuccess('Tag updated!');
+          await this.loadVersions();
+          this.cancelEditTag();
+        } catch (err) {
+          this.showError('Error updating tag: ' + err.message);
+        }
+      },
+      
+      cancelEditTag() {
+        this.editingVersionTag = false;
+        this.editingVersionId = null;
+        this.tempTag = '';
+      },
+      
+      removeTag(version) {
+        this.editingVersionId = version.id;
+        this.tempTag = null;
+        this.saveTag();
       },
       
       // Diff

@@ -7,6 +7,7 @@ const {
   getVersion, 
   rollbackToVersion, 
   deleteVersion,
+  updateVersionMetadata,
   getVersionContentPreview,
   getVersionFilesContent,
   getCurrentLandingFilesContent
@@ -364,6 +365,28 @@ router.delete('/:versionId', (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting version:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update version metadata (description and tag)
+router.put('/:versionId', (req, res) => {
+  // Check permission
+  if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
+    return res.status(403).json({ error: 'Missing permission: landings:update' });
+  }
+
+  try {
+    const { id, versionId } = req.params;
+    const { description, tag } = req.body;
+    
+    const updatedVersion = updateVersionMetadata(id, versionId, { description, tag });
+    
+    console.log(`📝 Updated version metadata for ${versionId}:`, { description, tag });
+    
+    res.json({ success: true, version: updatedVersion });
+  } catch (error) {
+    console.error('Error updating version metadata:', error);
     res.status(500).json({ error: error.message });
   }
 });
