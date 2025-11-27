@@ -1,13 +1,16 @@
 require('dotenv').config();
 const express = require('express');
-const basicAuth = require('express-basic-auth');
 const multer = require('multer');
 const path = require('path');
 
 // Local modules
 const { ensureDirectories, DATA_DIR, LANDINGS_DIR } = require('./lib/db');
+const { adminBasicAuth, setCurrentOrganization } = require('./lib/auth');
 const landingsRouter = require('./routes/landings');
 const adminConfigRouter = require('./routes/admin-config');
+const organizationsRouter = require('./routes/organizations');
+const usersRouter = require('./routes/users');
+const migrationRouter = require('./routes/migration');
 const { domainStaticMiddleware, slugStaticMiddleware, serveLandingByDomain, serveLandingBySlug } = require('./routes/serve');
 
 // Initialize
@@ -36,20 +39,28 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Basic auth for admin
-const adminAuth = basicAuth({
-  users: { [process.env.ADMIN_USERNAME]: process.env.ADMIN_PASSWORD },
-  challenge: true
-});
-
 // Admin panel route (EJS)
-app.get('/admin', adminAuth, (req, res) => {
+app.get('/admin', adminBasicAuth, (req, res) => {
   res.render('admin/index');
 });
 
-// API routes
-app.use('/api/landings', adminAuth, upload.array('files'), landingsRouter);
-app.use('/api/admin-config', adminAuth, adminConfigRouter);
+// API routes with auth and organization context
+app.use('/api/landings', adminBasicAuth, setCurrentOrganization, upload.array('files'), landingsRouter);
+app.use('/api/admin-config', adminBasicAuth, adminConfigRouter);
+app.use('/api/organizations', adminBasicAuth, organizationsRouter);
+app.use('/api/users', adminBasicAuth, usersRouter);
+app.use('/api/migration', adminBasicAuth, migrationRouter);
+
+// Auth info endpoint
+app.get('/api/auth/me', adminBasicAuth, setCurrentOrganization, (req, res) => {
+  res.json({
+    isAdmin: req.adminAuth,
+    user: req.currentUser ? { email: req.currentUser.email, isAdmin: req.currentUser.isAdmin } : null,
+    organizations: req.userOrganizations || [],
+    currentOrganization: req.currentOrganization || null,
+    rights: req.currentUser?.rights || []
+  });
+});
 
 // Static asset middleware for domain-based routing
 app.use('/*', domainStaticMiddleware);
@@ -61,7 +72,7 @@ app.use('/:slug/*', slugStaticMiddleware);
 app.get('/', serveLandingByDomain);
 
 // Default admin route (fallback for root)
-app.get('/', adminAuth, (req, res) => {
+app.get('/', adminBasicAuth, (req, res) => {
   res.render('admin/index');
 });
 
