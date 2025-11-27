@@ -1169,6 +1169,36 @@
         return classes[action] || 'bg-gray-100 text-gray-700';
       },
       
+      async viewLinkedVersion(versionId) {
+        if (!this.auditLanding) return;
+        
+        try {
+          // Close audit modal and open versions modal with the linked version visible
+          this.closeAuditModal();
+          
+          // Open versions modal
+          this.versionLanding = this.auditLanding;
+          this.versions = [];
+          this.newVersionDescription = '';
+          this.showVersionsModal = true;
+          
+          // Load versions and scroll to the linked one
+          await this.loadVersions();
+          
+          // Scroll to the version in the modal
+          this.$nextTick(() => {
+            const versionElement = document.querySelector(`[data-version-id="${versionId}"]`);
+            if (versionElement) {
+              versionElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              versionElement.classList.add('ring-2', 'ring-yellow-400');
+              setTimeout(() => versionElement.classList.remove('ring-2', 'ring-yellow-400'), 3000);
+            }
+          });
+        } catch (err) {
+          this.showError('Error loading version: ' + err.message);
+        }
+      },
+      
       // Editors
       initAddEditor() {
         if (this.$refs.addEditorContainer && !this.addEditor) {

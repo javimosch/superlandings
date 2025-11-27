@@ -163,7 +163,7 @@ router.put('/:id', (req, res) => {
 
     if (landing.type === 'html') {
       // Create version before update
-      createVersion(landing, 'Before edit');
+      const beforeVersion = createVersion(landing, 'Before edit');
       
       fs.writeFileSync(path.join(landingDir, 'index.html'), content);
       
@@ -176,19 +176,20 @@ router.put('/:id', (req, res) => {
       
       writeDB(db);
 
-      // Log audit event
+      // Log audit event with linked versions
       logAudit(id, {
         action: AUDIT_ACTIONS.UPDATE,
         actor: req.currentUser?.email || 'admin',
         isAdmin: req.adminAuth,
         details: 'Updated HTML content',
-        metadata: { versionNumber: afterVersion.versionNumber }
+        metadata: { versionNumber: afterVersion.versionNumber },
+        versionIds: [beforeVersion.id, afterVersion.id]
       });
 
       res.json({ success: true });
     } else if (landing.type === 'ejs' && req.files && req.files.length > 0) {
       // Create version before update
-      createVersion(landing, 'Before edit');
+      const beforeVersion = createVersion(landing, 'Before edit');
       
       // Clear all existing files in the landing directory first
       const files = fs.readdirSync(landingDir);
@@ -222,13 +223,14 @@ router.put('/:id', (req, res) => {
       
       writeDB(db);
 
-      // Log audit event
+      // Log audit event with linked versions
       logAudit(id, {
         action: AUDIT_ACTIONS.UPDATE,
         actor: req.currentUser?.email || 'admin',
         isAdmin: req.adminAuth,
         details: 'Updated EJS files',
-        metadata: { versionNumber: afterVersion.versionNumber }
+        metadata: { versionNumber: afterVersion.versionNumber },
+        versionIds: [beforeVersion.id, afterVersion.id]
       });
 
       res.json({ success: true });

@@ -48,7 +48,7 @@
               </div>
               
               <!-- Metadata -->
-              <div class="text-sm text-gray-500 flex items-center gap-4 flex-wrap">
+              <div class="text-sm text-gray-500 flex items-center gap-4 flex-wrap mb-2">
                 <span class="flex items-center gap-1">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
@@ -61,6 +61,19 @@
                   </svg>
                   {{ formatAuditDate(entry.timestamp) }}
                 </span>
+              </div>
+
+              <!-- Linked Versions -->
+              <div v-if="entry.versionIds && entry.versionIds.length > 0" class="mt-2 pt-2 border-t border-gray-200">
+                <div class="text-xs text-gray-600 font-medium mb-1">📜 Linked Versions:</div>
+                <div class="flex gap-1 flex-wrap">
+                  <button v-for="(versionId, idx) in entry.versionIds" :key="versionId"
+                          @click="viewLinkedVersion(versionId)"
+                          class="px-2 py-1 text-xs rounded hover:opacity-80 transition"
+                          :class="idx === 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'">
+                    {{ idx === 0 ? '📋 Before' : '✨ After' }}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
