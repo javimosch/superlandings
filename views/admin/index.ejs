@@ -22,7 +22,7 @@
   </style>
 </head>
 <body class="bg-gray-50">
-  <div id="app" class="min-h-screen">
+  <div id="app" class="min-h-screen" @click="closeDropdowns">
     <%- include('partials/header') %>
     <%- include('partials/main') %>
     <%- include('partials/toasts') %>
@@ -30,6 +30,8 @@
     <%- include('partials/modals/edit-landing') %>
     <%- include('partials/modals/domains') %>
     <%- include('partials/modals/admin-domains') %>
+    <%- include('partials/modals/organizations') %>
+    <%- include('partials/modals/move-landing') %>
   </div>
   <%- include('partials/scripts') %>
 </body>

@@ -6,20 +6,34 @@
         <p class="text-blue-100 mt-1">Manage your landing pages</p>
       </div>
       <div class="flex items-center gap-4">
-        <div v-if="adminConfig.domains && adminConfig.domains.length > 0" class="text-sm">
-          <span class="text-blue-100">Admin domains:</span>
-          <template v-if="adminConfig.published">
-            <template v-for="(domainObj, idx) in adminConfig.domains.filter(d => d.published)" :key="idx">
-              <a :href="'https://' + domainObj.domain" target="_blank" class="ml-2 hover:text-white underline">{{ domainObj.domain }}</a><span v-if="idx < adminConfig.domains.filter(d => d.published).length - 1">,</span>
-            </template>
-          </template>
-          <template v-else>
-            <span class="ml-2">{{ adminConfig.domains.map(d => d.domain).join(', ') }}</span>
-          </template>
+        <!-- Current Organization -->
+        <div v-if="currentOrganization" class="flex items-center gap-2">
+          <span class="text-blue-200 text-sm">Org:</span>
+          <span class="px-3 py-1 bg-blue-500 rounded-lg text-sm font-medium">{{ currentOrganization.name }}</span>
+          <!-- Organization Switcher -->
+          <div v-if="organizations.length > 1 || authInfo.isAdmin" class="relative">
+            <button @click="showOrgSwitcher = !showOrgSwitcher" class="px-2 py-1 bg-blue-400 hover:bg-blue-300 rounded text-xs">
+              ⇄ Switch
+            </button>
+            <div v-if="showOrgSwitcher" class="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg z-50 text-gray-800">
+              <div class="p-2 border-b text-xs text-gray-500 font-medium">Select Organization</div>
+              <button v-for="org in organizations" :key="org.id" @click="switchOrganization(org)" 
+                :class="['w-full text-left px-3 py-2 hover:bg-gray-100 text-sm', currentOrganization?.id === org.id ? 'bg-blue-50 text-blue-600' : '']">
+                {{ org.name }}
+              </button>
+            </div>
+          </div>
         </div>
-        <button @click="showAdminDomainsModal = true" class="px-4 py-2 bg-blue-500 hover:bg-blue-400 rounded-lg transition text-sm font-medium">
-          ⚙️ Admin Domains
-        </button>
+
+        <!-- Admin Controls -->
+        <template v-if="authInfo.isAdmin">
+          <button @click="showOrganizationsModal = true" class="px-4 py-2 bg-blue-500 hover:bg-blue-400 rounded-lg transition text-sm font-medium">
+            🏢 Organizations
+          </button>
+          <button @click="showAdminDomainsModal = true" class="px-4 py-2 bg-blue-500 hover:bg-blue-400 rounded-lg transition text-sm font-medium">
+            ⚙️ Admin Domains
+          </button>
+        </template>
       </div>
     </div>
   </div>

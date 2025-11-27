@@ -4,6 +4,14 @@
   createApp({
     data() {
       return {
+        // Auth & Organizations
+        authInfo: { isAdmin: false, user: null, organizations: [], rights: [] },
+        organizations: [],
+        allOrganizations: [],
+        currentOrganization: null,
+        showOrgSwitcher: false,
+        
+        // Landings
         landings: [],
         showAddModal: false,
         showEditModal: false,
@@ -12,23 +20,69 @@
         selectedEjsZip: null,
         editSelectedEjsFiles: [],
         editSelectedEjsZip: null,
+        editingLanding: null,
+        addEditor: null,
+        editEditor: null,
+        
+        // Domains
         editingDomains: null,
         showDomainsModal: false,
         showAdminDomainsModal: false,
         adminConfig: { domains: [], published: false, traefikConfigFile: '' },
-        editingLanding: null,
-        addEditor: null,
-        editEditor: null,
+        
+        // Organizations Modal
+        showOrganizationsModal: false,
+        newOrgName: '',
+        editingOrg: null,
+        allUsers: [],
+        newUserEmail: '',
+        newUserPassword: '',
+        showAddUserToOrg: null,
+        addUserEmail: '',
+        availableRights: [],
+        
+        // User Rights Modal
+        showUserRightsModal: false,
+        editingUserRights: null,
+        
+        // Move Landing Modal
+        showMoveModal: false,
+        movingLanding: null,
+        moveTargetOrgId: '',
+        
+        // UI State
         loading: {},
         toasts: [],
         toastId: 0
       };
     },
-    mounted() {
-      this.loadLandings();
-      this.loadAdminConfig();
+    computed: {
+      canCreate() {
+        return this.authInfo.isAdmin || this.authInfo.rights.includes('landings:create');
+      },
+      canUpdate() {
+        return this.authInfo.isAdmin || this.authInfo.rights.includes('landings:update');
+      },
+      canDelete() {
+        return this.authInfo.isAdmin || this.authInfo.rights.includes('landings:delete');
+      },
+      canDomains() {
+        return this.authInfo.isAdmin || this.authInfo.rights.includes('landings:domains');
+      }
+    },
+    async mounted() {
+      await this.loadAuthInfo();
+      await this.loadOrganizations();
+      this.initCurrentOrganization();
+      await this.loadLandings();
+      await this.loadAdminConfig();
+      if (this.authInfo.isAdmin) {
+        await this.loadAllUsers();
+        await this.loadAvailableRights();
+      }
     },
     methods: {
+      // Toast notifications
       addToast(type, message, duration = 5000) {
         const id = ++this.toastId;
         this.toasts.push({ id, type, message });
@@ -38,31 +92,99 @@
         const index = this.toasts.findIndex(t => t.id === id);
         if (index !== -1) this.toasts.splice(index, 1);
       },
-      showError(message) {
-        this.addToast('error', message);
+      showError(message) { this.addToast('error', message); },
+      showSuccess(message) { this.addToast('success', message, 3000); },
+      
+      // Close dropdowns on outside click
+      closeDropdowns(e) {
+        if (!e.target.closest('.relative')) {
+          this.showOrgSwitcher = false;
+        }
       },
-      showSuccess(message) {
-        this.addToast('success', message, 3000);
+      
+      // Auth
+      async loadAuthInfo() {
+        try {
+          const res = await fetch('/api/auth/me', { headers: this.getHeaders() });
+          this.authInfo = await res.json();
+        } catch (err) {
+          console.error('Error loading auth info:', err);
+        }
       },
+      
+      getHeaders() {
+        const headers = {};
+        if (this.currentOrganization) {
+          headers['X-Organization-Id'] = this.currentOrganization.id;
+        }
+        return headers;
+      },
+      
+      // Organizations
+      async loadOrganizations() {
+        try {
+          const res = await fetch('/api/organizations');
+          const orgs = await res.json();
+          this.organizations = orgs;
+          if (this.authInfo.isAdmin) {
+            this.allOrganizations = orgs;
+          }
+        } catch (err) {
+          this.showError('Error loading organizations: ' + err.message);
+        }
+      },
+      
+      initCurrentOrganization() {
+        const savedOrgId = localStorage.getItem('currentOrganizationId');
+        if (savedOrgId) {
+          const org = this.organizations.find(o => o.id === savedOrgId);
+          if (org) {
+            this.currentOrganization = org;
+            return;
+          }
+        }
+        if (this.organizations.length > 0) {
+          this.currentOrganization = this.organizations[0];
+          localStorage.setItem('currentOrganizationId', this.currentOrganization.id);
+        }
+      },
+      
+      switchOrganization(org) {
+        this.currentOrganization = org;
+        localStorage.setItem('currentOrganizationId', org.id);
+        this.showOrgSwitcher = false;
+        this.loadLandings();
+        this.showSuccess(`Switched to ${org.name}`);
+      },
+      
+      getOrgName(orgId) {
+        const org = this.organizations.find(o => o.id === orgId);
+        return org ? org.name : 'Unknown';
+      },
+      
+      // Landings
       async loadLandings() {
         try {
-          const res = await fetch('/api/landings');
+          const res = await fetch('/api/landings', { headers: this.getHeaders() });
           this.landings = await res.json();
         } catch (err) {
           this.showError('Error loading landings: ' + err.message);
         }
       },
+      
       async loadAdminConfig() {
         try {
           const res = await fetch('/api/admin-config');
           this.adminConfig = await res.json();
         } catch (err) {
-          this.showError('Error loading admin config: ' + err.message);
+          console.error('Error loading admin config:', err);
         }
       },
+      
       formatDate(dateStr) {
         return new Date(dateStr).toLocaleDateString();
       },
+      
       closeAddModal() {
         this.showAddModal = false;
         this.newLanding = { name: '', slug: '', type: 'html', domains: [], content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Landing</title>\n</head>\n<body>\n  <h1>Hello World!</h1>\n</body>\n</html>' };
@@ -73,12 +195,16 @@
           this.addEditor = null;
         }
       },
+      
       async addLanding() {
         try {
           const formData = new FormData();
           formData.append('name', this.newLanding.name);
           formData.append('slug', this.newLanding.slug);
           formData.append('type', this.newLanding.type);
+          if (this.currentOrganization) {
+            formData.append('organizationId', this.currentOrganization.id);
+          }
           const domains = this.newLanding.domains
             .filter(d => typeof d === 'string' ? d.trim() : d.domain && d.domain.trim())
             .map(d => typeof d === 'string' ? { domain: d.trim(), published: false } : d);
@@ -90,19 +216,14 @@
             if (this.selectedEjsZip) {
               formData.append('files', this.selectedEjsZip);
             } else if (this.selectedEjsFiles.length > 0) {
-              this.selectedEjsFiles.forEach(file => {
-                formData.append('files', file);
-              });
+              this.selectedEjsFiles.forEach(file => formData.append('files', file));
             }
-          } else if (this.$refs.fileInput && this.$refs.fileInput.files.length > 0) {
-            Array.from(this.$refs.fileInput.files).forEach(file => {
-              formData.append('files', file);
-            });
+          } else if (this.$refs.fileInput?.files.length > 0) {
+            Array.from(this.$refs.fileInput.files).forEach(file => formData.append('files', file));
           }
 
-          const res = await fetch('/api/landings', { method: 'POST', body: formData });
+          const res = await fetch('/api/landings', { method: 'POST', body: formData, headers: this.getHeaders() });
           const data = await res.json();
-          
           if (!res.ok) throw new Error(data.error);
           
           this.showSuccess('Landing created successfully!');
@@ -112,6 +233,7 @@
           this.showError('Error creating landing: ' + err.message);
         }
       },
+      
       async editLanding(landing) {
         try {
           if (landing.type === 'html') {
@@ -122,15 +244,12 @@
             this.editingLanding = { ...landing };
           }
           this.showEditModal = true;
-          this.$nextTick(() => {
-            if (landing.type === 'html') {
-              this.initEditEditor();
-            }
-          });
+          this.$nextTick(() => { if (landing.type === 'html') this.initEditEditor(); });
         } catch (err) {
           this.showError('Error loading landing: ' + err.message);
         }
       },
+      
       async saveEdit() {
         try {
           if (this.editingLanding.type === 'html') {
@@ -140,29 +259,20 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ content })
             });
-            
             if (!res.ok) throw new Error('Failed to save');
           } else if (this.editingLanding.type === 'ejs') {
             const formData = new FormData();
             if (this.editSelectedEjsZip) {
               formData.append('files', this.editSelectedEjsZip);
             } else if (this.editSelectedEjsFiles.length > 0) {
-              this.editSelectedEjsFiles.forEach(file => {
-                formData.append('files', file);
-              });
+              this.editSelectedEjsFiles.forEach(file => formData.append('files', file));
             } else {
               this.showError('Please select EJS files or a ZIP file to update');
               return;
             }
-            
-            const res = await fetch(`/api/landings/${this.editingLanding.id}`, {
-              method: 'PUT',
-              body: formData
-            });
-            
+            const res = await fetch(`/api/landings/${this.editingLanding.id}`, { method: 'PUT', body: formData });
             if (!res.ok) throw new Error('Failed to save');
           }
-          
           this.showSuccess('Changes saved successfully!');
           this.closeEditModal();
           this.loadLandings();
@@ -170,42 +280,42 @@
           this.showError('Error saving: ' + err.message);
         }
       },
+      
       closeEditModal() {
         this.showEditModal = false;
         this.editingLanding = null;
         this.editSelectedEjsFiles = [];
         this.editSelectedEjsZip = null;
-        if (this.editEditor) {
-          this.editEditor.toTextArea();
-          this.editEditor = null;
+        if (this.editEditor) { this.editEditor.toTextArea(); this.editEditor = null; }
+      },
+      
+      async deleteLanding(id) {
+        try {
+          const res = await fetch(`/api/landings/${id}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error('Failed to delete');
+          this.showSuccess('Landing deleted successfully!');
+          this.loadLandings();
+        } catch (err) {
+          this.showError('Error deleting landing: ' + err.message);
         }
       },
+      
+      // Domains
       openDomainsModal(landing) {
-        this.editingDomains = { 
-          ...landing, 
-          domains: landing.domains.map(d => ({ ...d })) 
-        };
+        this.editingDomains = { ...landing, domains: landing.domains.map(d => ({ ...d })) };
         this.showDomainsModal = true;
       },
-      closeDomainsModal() {
-        this.showDomainsModal = false;
-        this.editingDomains = null;
-      },
-      addDomain() {
-        this.editingDomains.domains.push({ domain: '', published: false });
-      },
-      removeDomain(index) {
-        this.editingDomains.domains.splice(index, 1);
-      },
+      closeDomainsModal() { this.showDomainsModal = false; this.editingDomains = null; },
+      addDomain() { this.editingDomains.domains.push({ domain: '', published: false }); },
+      removeDomain(index) { this.editingDomains.domains.splice(index, 1); },
+      
       async publishSingleDomain(domain) {
         const loadingKey = this.editingDomains.id + '-' + domain;
         this.loading[loadingKey] = true;
         try {
           const res = await fetch(`/api/landings/${this.editingDomains.id}/domains/${encodeURIComponent(domain)}/publish`, { method: 'POST' });
           const data = await res.json();
-          
           if (!res.ok) throw new Error(data.error);
-          
           this.showSuccess(data.message);
           await this.loadLandings();
           const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
@@ -216,15 +326,14 @@
           this.loading[loadingKey] = false;
         }
       },
+      
       async unpublishSingleDomain(domain) {
         const loadingKey = this.editingDomains.id + '-' + domain;
         this.loading[loadingKey] = true;
         try {
           const res = await fetch(`/api/landings/${this.editingDomains.id}/domains/${encodeURIComponent(domain)}/unpublish`, { method: 'POST' });
           const data = await res.json();
-          
           if (!res.ok) throw new Error(data.error);
-          
           this.showSuccess(data.message);
           await this.loadLandings();
           const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
@@ -235,28 +344,25 @@
           this.loading[loadingKey] = false;
         }
       },
+      
       async saveDomains() {
         try {
           const domainPattern = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
           const domains = this.editingDomains.domains
-            .filter(d => d.domain && d.domain.trim())
+            .filter(d => d.domain?.trim())
             .map(d => ({ domain: d.domain.trim(), published: d.published || false }));
-          
           const invalidDomains = domains.filter(d => !domainPattern.test(d.domain));
           if (invalidDomains.length > 0) {
             this.showError('Invalid domain format: ' + invalidDomains.map(d => d.domain).join(', '));
             return;
           }
-          
           const res = await fetch(`/api/landings/${this.editingDomains.id}/domains`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ domains })
           });
           const data = await res.json();
-          
           if (!res.ok) throw new Error(data.error);
-          
           this.showSuccess('Domains updated successfully!');
           this.closeDomainsModal();
           this.loadLandings();
@@ -264,14 +370,13 @@
           this.showError('Error updating domains: ' + err.message);
         }
       },
+      
       async publishLanding(id) {
         this.loading[id] = true;
         try {
           const res = await fetch(`/api/landings/${id}/publish`, { method: 'POST' });
           const data = await res.json();
-          
           if (!res.ok) throw new Error(data.error);
-          
           this.showSuccess(data.message);
           this.loadLandings();
         } catch (err) {
@@ -280,14 +385,13 @@
           this.loading[id] = false;
         }
       },
+      
       async unpublishLanding(id) {
         this.loading[id] = true;
         try {
           const res = await fetch(`/api/landings/${id}/unpublish`, { method: 'POST' });
           const data = await res.json();
-          
           if (!res.ok) throw new Error(data.error);
-          
           this.showSuccess(data.message);
           this.loadLandings();
         } catch (err) {
@@ -296,53 +400,39 @@
           this.loading[id] = false;
         }
       },
-      async deleteLanding(id) {
-        try {
-          const res = await fetch(`/api/landings/${id}`, { method: 'DELETE' });
-          if (!res.ok) throw new Error('Failed to delete');
-          
-          this.showSuccess('Landing deleted successfully!');
-          this.loadLandings();
-        } catch (err) {
-          this.showError('Error deleting landing: ' + err.message);
-        }
-      },
+      
+      // Admin Config
       async saveAdminDomains() {
         try {
           const domainPattern = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
           const domains = this.adminConfig.domains
-            .filter(d => d.domain && d.domain.trim())
+            .filter(d => d.domain?.trim())
             .map(d => ({ domain: d.domain.trim(), published: d.published || false }));
-          
           const invalidDomains = domains.filter(d => !domainPattern.test(d.domain));
           if (invalidDomains.length > 0) {
             this.showError('Invalid domain format: ' + invalidDomains.map(d => d.domain).join(', '));
             return;
           }
-          
           const res = await fetch('/api/admin-config/domains', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ domains })
           });
           const data = await res.json();
-          
           if (!res.ok) throw new Error(data.error);
-          
           this.showSuccess('Admin domains updated successfully!');
           this.loadAdminConfig();
         } catch (err) {
           this.showError('Error updating admin domains: ' + err.message);
         }
       },
+      
       async publishAdmin() {
         this.loading.admin = true;
         try {
           const res = await fetch('/api/admin-config/publish', { method: 'POST' });
           const data = await res.json();
-          
           if (!res.ok) throw new Error(data.error);
-          
           this.showSuccess(data.message);
           this.loadAdminConfig();
         } catch (err) {
@@ -351,14 +441,13 @@
           this.loading.admin = false;
         }
       },
+      
       async unpublishAdmin() {
         this.loading.admin = true;
         try {
           const res = await fetch('/api/admin-config/unpublish', { method: 'POST' });
           const data = await res.json();
-          
           if (!res.ok) throw new Error(data.error);
-          
           this.showSuccess(data.message);
           this.loadAdminConfig();
         } catch (err) {
@@ -367,45 +456,243 @@
           this.loading.admin = false;
         }
       },
+      
+      // Migration
+      async runMigration() {
+        this.loading.migration = true;
+        try {
+          const res = await fetch('/api/migration/rbac', { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess(data.message);
+          await this.loadOrganizations();
+          this.initCurrentOrganization();
+          await this.loadLandings();
+        } catch (err) {
+          this.showError('Error running migration: ' + err.message);
+        } finally {
+          this.loading.migration = false;
+        }
+      },
+      
+      // Move Landing
+      openMoveModal(landing) {
+        this.movingLanding = landing;
+        this.moveTargetOrgId = '';
+        this.showMoveModal = true;
+      },
+      
+      async moveLanding() {
+        this.loading.move = true;
+        try {
+          const res = await fetch('/api/migration/move-landing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ landingId: this.movingLanding.id, targetOrganizationId: this.moveTargetOrgId })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess(data.message);
+          this.showMoveModal = false;
+          this.loadLandings();
+        } catch (err) {
+          this.showError('Error moving landing: ' + err.message);
+        } finally {
+          this.loading.move = false;
+        }
+      },
+      
+      // Organizations Management (Admin)
+      async createOrganization() {
+        try {
+          const res = await fetch('/api/organizations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: this.newOrgName })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess('Organization created!');
+          this.newOrgName = '';
+          await this.loadOrganizations();
+        } catch (err) {
+          this.showError('Error creating organization: ' + err.message);
+        }
+      },
+      
+      async saveOrganization() {
+        try {
+          const res = await fetch(`/api/organizations/${this.editingOrg.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: this.editingOrg.name })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess('Organization updated!');
+          this.editingOrg = null;
+          await this.loadOrganizations();
+        } catch (err) {
+          this.showError('Error updating organization: ' + err.message);
+        }
+      },
+      
+      async deleteOrganization(id) {
+        try {
+          const res = await fetch(`/api/organizations/${id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess('Organization deleted!');
+          await this.loadOrganizations();
+        } catch (err) {
+          this.showError('Error deleting organization: ' + err.message);
+        }
+      },
+      
+      // Users Management (Admin)
+      async loadAllUsers() {
+        try {
+          const res = await fetch('/api/users');
+          this.allUsers = await res.json();
+        } catch (err) {
+          console.error('Error loading users:', err);
+        }
+      },
+      
+      async loadAvailableRights() {
+        try {
+          const res = await fetch('/api/users/rights');
+          this.availableRights = await res.json();
+        } catch (err) {
+          console.error('Error loading rights:', err);
+        }
+      },
+      
+      async createUser() {
+        try {
+          const res = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: this.newUserEmail, password: this.newUserPassword })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess('User created!');
+          this.newUserEmail = '';
+          this.newUserPassword = '';
+          await this.loadAllUsers();
+        } catch (err) {
+          this.showError('Error creating user: ' + err.message);
+        }
+      },
+      
+      async deleteUser(email) {
+        try {
+          const res = await fetch(`/api/users/${encodeURIComponent(email)}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess('User deleted!');
+          await this.loadAllUsers();
+          await this.loadOrganizations();
+        } catch (err) {
+          this.showError('Error deleting user: ' + err.message);
+        }
+      },
+      
+      availableUsersForOrg(org) {
+        const orgUserEmails = org.users?.map(u => u.email) || [];
+        return this.allUsers.filter(u => !orgUserEmails.includes(u.email));
+      },
+      
+      async addUserToOrganization(orgId) {
+        try {
+          const res = await fetch(`/api/organizations/${orgId}/users`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: this.addUserEmail, rights: [] })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess('User added to organization!');
+          this.showAddUserToOrg = null;
+          this.addUserEmail = '';
+          await this.loadOrganizations();
+        } catch (err) {
+          this.showError('Error adding user: ' + err.message);
+        }
+      },
+      
+      async removeUserFromOrganization(orgId, email) {
+        try {
+          const res = await fetch(`/api/organizations/${orgId}/users/${encodeURIComponent(email)}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess('User removed from organization!');
+          await this.loadOrganizations();
+        } catch (err) {
+          this.showError('Error removing user: ' + err.message);
+        }
+      },
+      
+      openUserRightsModal(org, user) {
+        this.editingUserRights = {
+          orgId: org.id,
+          orgName: org.name,
+          email: user.email,
+          rights: [...(user.rights || [])]
+        };
+        this.showUserRightsModal = true;
+      },
+      
+      selectAllRights() { this.editingUserRights.rights = [...this.availableRights]; },
+      selectNoRights() { this.editingUserRights.rights = []; },
+      
+      async saveUserRights() {
+        try {
+          const res = await fetch(`/api/organizations/${this.editingUserRights.orgId}/users/${encodeURIComponent(this.editingUserRights.email)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rights: this.editingUserRights.rights })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess('Rights updated!');
+          this.showUserRightsModal = false;
+          await this.loadOrganizations();
+        } catch (err) {
+          this.showError('Error updating rights: ' + err.message);
+        }
+      },
+      
+      // File handling
       handleEjsFilesChange(event) {
         this.selectedEjsFiles = Array.from(event.target.files);
         this.selectedEjsZip = null;
-        if (this.$refs.ejsZipInput) {
-          this.$refs.ejsZipInput.value = '';
-        }
+        if (this.$refs.ejsZipInput) this.$refs.ejsZipInput.value = '';
       },
       handleEjsZipChange(event) {
         this.selectedEjsZip = event.target.files[0] || null;
         this.selectedEjsFiles = [];
-        if (this.$refs.ejsFileInput) {
-          this.$refs.ejsFileInput.value = '';
-        }
+        if (this.$refs.ejsFileInput) this.$refs.ejsFileInput.value = '';
       },
       handleEditEjsFilesChange(event) {
         this.editSelectedEjsFiles = Array.from(event.target.files);
         this.editSelectedEjsZip = null;
-        if (this.$refs.editEjsZipInput) {
-          this.$refs.editEjsZipInput.value = '';
-        }
+        if (this.$refs.editEjsZipInput) this.$refs.editEjsZipInput.value = '';
       },
       handleEditEjsZipChange(event) {
         this.editSelectedEjsZip = event.target.files[0] || null;
         this.editSelectedEjsFiles = [];
-        if (this.$refs.editEjsFileInput) {
-          this.$refs.editEjsFileInput.value = '';
-        }
+        if (this.$refs.editEjsFileInput) this.$refs.editEjsFileInput.value = '';
       },
+      
+      // Editors
       initAddEditor() {
         if (this.$refs.addEditorContainer && !this.addEditor) {
           const textarea = document.createElement('textarea');
           textarea.value = this.newLanding.content;
           this.$refs.addEditorContainer.appendChild(textarea);
-          this.addEditor = CodeMirror.fromTextArea(textarea, {
-            mode: 'htmlmixed',
-            lineNumbers: true,
-            theme: 'default',
-            lineWrapping: true
-          });
+          this.addEditor = CodeMirror.fromTextArea(textarea, { mode: 'htmlmixed', lineNumbers: true, theme: 'default', lineWrapping: true });
         }
       },
       initEditEditor() {
@@ -413,23 +700,14 @@
           const textarea = document.createElement('textarea');
           textarea.value = this.editingLanding.content;
           this.$refs.editEditorContainer.appendChild(textarea);
-          this.editEditor = CodeMirror.fromTextArea(textarea, {
-            mode: 'htmlmixed',
-            lineNumbers: true,
-            theme: 'default',
-            lineWrapping: true
-          });
+          this.editEditor = CodeMirror.fromTextArea(textarea, { mode: 'htmlmixed', lineNumbers: true, theme: 'default', lineWrapping: true });
           this.editEditor.setSize('100%', '400px');
         }
       }
     },
     watch: {
       showAddModal(val) {
-        if (val) {
-          this.$nextTick(() => {
-            this.initAddEditor();
-          });
-        }
+        if (val) this.$nextTick(() => this.initAddEditor());
       }
     }
   }).mount('#app');
