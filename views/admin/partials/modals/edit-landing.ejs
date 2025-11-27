@@ -43,11 +43,49 @@
     </div>
 
     <div class="px-6 py-4 bg-gray-50 border-t flex gap-3">
+      <button v-if="editingLanding.type === 'html'" @click="previewDirtyChanges('modal')" class="px-4 py-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition font-semibold">
+        👁️ Preview Modal
+      </button>
+      <button v-if="editingLanding.type === 'html'" @click="previewDirtyChanges('tab')" class="px-4 py-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition font-semibold">
+        👁️ Preview Tab
+      </button>
       <button @click="saveEdit" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
         Save Changes
       </button>
       <button @click="closeEditModal" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold">
         Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Preview Modal -->
+<div v-if="showPreviewModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-0 z-50">
+  <div class="bg-white shadow-2xl w-full h-full max-h-screen flex flex-col">
+    <!-- Header -->
+    <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center flex-shrink-0">
+      <h3 class="text-xl font-semibold text-gray-900">Preview - {{ editingLanding.name }}</h3>
+      <button @click="closePreviewModal" class="text-gray-500 hover:text-gray-700">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    
+    <!-- Preview Content -->
+    <div class="flex-1 overflow-hidden">
+      <iframe 
+        :srcdoc="previewContent" 
+        class="w-full h-full border-0"
+        sandbox="allow-scripts allow-same-origin"
+        title="Preview">
+      </iframe>
+    </div>
+    
+    <!-- Footer -->
+    <div class="px-6 py-4 bg-gray-50 border-t flex gap-3 justify-end flex-shrink-0">
+      <button @click="closePreviewModal" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold">
+        Close
       </button>
     </div>
   </div>
