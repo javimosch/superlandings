@@ -55,6 +55,11 @@ function serveLandingByDomain(req, res, next) {
 
     const landingDir = path.join(LANDINGS_DIR, landing.slug);
 
+    // Disable caching for landing pages
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
     if (landing.type === 'html') {
       return res.sendFile(path.join(landingDir, 'index.html'));
     } else if (landing.type === 'static') {
@@ -81,6 +86,11 @@ function serveLandingBySlug(req, res) {
 
     const landingDir = path.join(LANDINGS_DIR, slug);
 
+    // Disable caching for landing pages
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
     if (landing.type === 'html') {
       res.sendFile(path.join(landingDir, 'index.html'));
     } else if (landing.type === 'static') {
