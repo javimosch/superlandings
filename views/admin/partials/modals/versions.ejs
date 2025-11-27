@@ -146,8 +146,8 @@
               </button>
               <!-- Delete button -->
               <button @click="deleteVersionItem(version)" 
-                      :disabled="loading['delete-' + version.id] || version.tag"
-                      :title="version.tag ? 'Tagged versions cannot be deleted' : 'Delete version'"
+                      :disabled="loading['delete-' + version.id] || version.tag || versions.length <= 1"
+                      :title="versions.length <= 1 ? 'Cannot delete the last version' : (version.tag ? 'Tagged versions cannot be deleted' : 'Delete version')"
                       class="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed">
                 <span v-if="loading['delete-' + version.id]">...</span>
                 <span v-else>🗑️</span>
@@ -240,6 +240,9 @@
         <p v-if="confirmingVersion?.tag" class="text-sm text-red-600 mt-2 font-medium">
           ⚠️ This is a tagged version. Tagged versions are normally protected from deletion.
         </p>
+        <p v-else-if="versions.length <= 1" class="text-sm text-red-600 mt-2 font-medium">
+          ⚠️ This is the last version. You cannot delete the only version of a landing page.
+        </p>
       </div>
       
       <div class="flex gap-3">
@@ -248,7 +251,8 @@
           Cancel
         </button>
         <button @click="confirmDelete" 
-                class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">
+                :disabled="versions.length <= 1"
+                class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed">
           Delete Version {{ confirmingVersion?.versionNumber }}
         </button>
       </div>

@@ -879,12 +879,25 @@
       },
       
       async deleteVersionItem(version) {
+        // Prevent deletion if this is the last version
+        if (this.versions.length <= 1) {
+          this.showError('Cannot delete the last version. A landing page must have at least one version.');
+          return;
+        }
         this.confirmingVersion = version;
         this.showDeleteConfirm = true;
       },
       
       async confirmDelete() {
         if (!this.confirmingVersion) return;
+        
+        // Additional safety check - prevent deletion if only one version remains
+        if (this.versions.length <= 1) {
+          this.showError('Cannot delete the last version. A landing page must have at least one version.');
+          this.showDeleteConfirm = false;
+          this.confirmingVersion = null;
+          return;
+        }
         
         const loadingKey = 'delete-' + this.confirmingVersion.id;
         this.loading[loadingKey] = true;
