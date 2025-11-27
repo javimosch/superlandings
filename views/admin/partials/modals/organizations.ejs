@@ -1,22 +1,22 @@
 <!-- Organizations Modal (Admin only) -->
-<div v-if="showOrganizationsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+<div v-if="showOrganizationsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
   <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-    <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
-      <h3 class="text-xl font-semibold text-gray-900">Organizations & Users</h3>
-      <button @click="showOrganizationsModal = false" class="text-gray-500 hover:text-gray-700">
+    <div class="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 border-b flex justify-between items-center">
+      <h3 class="text-lg sm:text-xl font-semibold text-gray-900">Organizations & Users</h3>
+      <button @click="showOrganizationsModal = false" class="text-gray-500 hover:text-gray-700 flex-shrink-0">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
       </button>
     </div>
     
-    <div class="p-6 flex-1 overflow-y-auto">
+    <div class="p-4 sm:p-6 flex-1 overflow-y-auto">
       <!-- Create Organization -->
       <div class="mb-6">
-        <h4 class="text-lg font-medium mb-3">Create Organization</h4>
-        <div class="flex gap-2">
-          <input v-model="newOrgName" type="text" placeholder="Organization name" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-          <button @click="createOrganization" :disabled="!newOrgName.trim()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+        <h4 class="text-base sm:text-lg font-medium mb-3">Create Organization</h4>
+        <div class="flex gap-2 flex-col sm:flex-row">
+          <input v-model="newOrgName" type="text" placeholder="Organization name" class="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm">
+          <button @click="createOrganization" :disabled="!newOrgName.trim()" class="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-xs sm:text-sm font-medium flex-shrink-0">
             Create
           </button>
         </div>

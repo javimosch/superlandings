@@ -1,23 +1,23 @@
 <!-- Diff Full Screen Modal -->
 <div v-if="showDiffModal" class="fixed inset-0 bg-gray-900 z-50 flex flex-col">
   <!-- Header -->
-  <div class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center border-b border-gray-700">
-    <div>
-      <h2 class="text-xl font-semibold">Version Diff</h2>
-      <p class="text-sm text-gray-400 mt-1">
+  <div class="bg-gray-800 text-white px-3 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-700">
+    <div class="flex-1 min-w-0">
+      <h2 class="text-lg sm:text-xl font-semibold">Version Diff</h2>
+      <p class="text-xs sm:text-sm text-gray-400 mt-1 break-words">
         Version {{ diffData?.version?.versionNumber }} 
         <span class="text-gray-500">vs</span> 
         {{ diffData?.compareLabel }}
       </p>
     </div>
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm flex-shrink-0">
       <span v-if="diffData?.diffs?.length === 0" class="text-green-400">No changes</span>
       <span v-else class="text-gray-400">{{ diffData?.diffs?.length }} file(s) changed</span>
     </div>
   </div>
 
   <!-- Diff Content -->
-  <div class="flex-1 overflow-y-auto p-6 bg-gray-900">
+  <div class="flex-1 overflow-y-auto p-3 sm:p-6 bg-gray-900">
     <div v-if="loading.diff" class="text-center py-12 text-gray-400">
       Loading diff...
     </div>

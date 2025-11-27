@@ -1,19 +1,19 @@
 <!-- Audit Log Modal -->
-<div v-if="showAuditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+<div v-if="showAuditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
   <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
-    <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
-      <div>
-        <h3 class="text-xl font-semibold text-gray-900">Audit Log</h3>
-        <p class="text-sm text-gray-500 mt-1">{{ auditLanding?.name }}</p>
+    <div class="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 border-b flex justify-between items-center">
+      <div class="flex-1 min-w-0">
+        <h3 class="text-lg sm:text-xl font-semibold text-gray-900">Audit Log</h3>
+        <p class="text-xs sm:text-sm text-gray-500 mt-1 truncate">{{ auditLanding?.name }}</p>
       </div>
-      <button @click="closeAuditModal" class="text-gray-500 hover:text-gray-700">
+      <button @click="closeAuditModal" class="text-gray-500 hover:text-gray-700 flex-shrink-0">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
       </button>
     </div>
     
-    <div class="p-6 flex-1 overflow-y-auto">
+    <div class="p-4 sm:p-6 flex-1 overflow-y-auto">
       <!-- Loading state -->
       <div v-if="loading.audit" class="text-center py-12 text-gray-500">
         <p class="text-lg">Loading audit log...</p>

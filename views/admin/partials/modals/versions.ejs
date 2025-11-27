@@ -1,25 +1,25 @@
 <!-- Version History Modal -->
-<div v-if="showVersionsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+<div v-if="showVersionsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
   <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
-    <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
-      <div>
-        <h3 class="text-xl font-semibold text-gray-900">Version History</h3>
-        <p class="text-sm text-gray-500 mt-1">{{ versionLanding?.name }}</p>
+    <div class="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 border-b flex justify-between items-center">
+      <div class="flex-1 min-w-0">
+        <h3 class="text-lg sm:text-xl font-semibold text-gray-900">Version History</h3>
+        <p class="text-xs sm:text-sm text-gray-500 mt-1 truncate">{{ versionLanding?.name }}</p>
       </div>
-      <button @click="closeVersionsModal" class="text-gray-500 hover:text-gray-700">
+      <button @click="closeVersionsModal" class="text-gray-500 hover:text-gray-700 flex-shrink-0">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
       </button>
     </div>
     
-    <div class="p-6 flex-1 overflow-y-auto">
+    <div class="p-4 sm:p-6 flex-1 overflow-y-auto">
       <!-- Create Snapshot Button -->
-      <div class="mb-4 flex gap-2">
+      <div class="mb-4 flex gap-2 flex-col sm:flex-row">
         <input v-model="newVersionDescription" type="text" placeholder="Version description (optional)" 
-               class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+               class="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm">
         <button @click="createSnapshot" :disabled="loading.createVersion" 
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                class="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-xs sm:text-sm font-medium flex-shrink-0">
           <span v-if="loading.createVersion">Creating...</span>
           <span v-else>📸 Create Snapshot</span>
         </button>

@@ -1,27 +1,27 @@
 <!-- Edit Modal -->
 <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-0 z-50">
   <div class="bg-white shadow-2xl w-full h-full max-h-screen flex flex-col">
-    <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center flex-shrink-0">
-      <div class="flex items-center gap-4">
-        <h3 class="text-xl font-semibold text-gray-900">Edit {{ editingLanding.type === 'html' ? 'HTML' : 'EJS Template' }} - {{ editingLanding.name }}</h3>
-        <div v-if="editingLanding.type === 'html'" class="text-sm text-gray-500">
+    <div class="px-3 sm:px-6 py-3 sm:py-4 bg-gray-50 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 flex-shrink-0">
+      <div class="flex-1 min-w-0">
+        <h3 class="text-base sm:text-xl font-semibold text-gray-900 break-words">Edit {{ editingLanding.type === 'html' ? 'HTML' : 'EJS Template' }} - {{ editingLanding.name }}</h3>
+        <div v-if="editingLanding.type === 'html'" class="text-xs sm:text-sm text-gray-500 mt-2 hidden sm:block">
           <span class="font-mono bg-gray-100 px-2 py-1 rounded">Ctrl+F</span> to search • 
           <span class="font-mono bg-gray-100 px-2 py-1 rounded">Ctrl+G</span> to find next • 
           <span class="font-mono bg-gray-100 px-2 py-1 rounded">Ctrl+Shift+G</span> to find previous
         </div>
       </div>
-      <button @click="closeEditModal" class="text-gray-500 hover:text-gray-700">
+      <button @click="closeEditModal" class="text-gray-500 hover:text-gray-700 flex-shrink-0">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
       </button>
     </div>
     
-    <div v-if="editingLanding.type === 'html'" class="flex-1 overflow-hidden p-6">
+    <div v-if="editingLanding.type === 'html'" class="flex-1 overflow-hidden p-3 sm:p-6">
       <div ref="editEditorContainer" class="h-full w-full"></div>
     </div>
 
-    <div v-if="editingLanding.type === 'ejs'" class="p-6 space-y-4 flex-1 overflow-y-auto">
+    <div v-if="editingLanding.type === 'ejs'" class="p-3 sm:p-6 space-y-4 flex-1 overflow-y-auto">
       <div>
         <label class="block text-sm font-medium text-gray-700 mb-2">Upload EJS Files</label>
         <input ref="editEjsFileInput" type="file" :multiple="true" accept=".ejs,.html" @change="handleEditEjsFilesChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
@@ -42,17 +42,17 @@
       </div>
     </div>
 
-    <div class="px-6 py-4 bg-gray-50 border-t flex gap-3">
-      <button v-if="editingLanding.type === 'html'" @click="previewDirtyChanges('modal')" class="px-4 py-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition font-semibold">
-        👁️ Preview Modal
+    <div class="px-3 sm:px-6 py-3 sm:py-4 bg-gray-50 border-t flex gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
+      <button v-if="editingLanding.type === 'html'" @click="previewDirtyChanges('modal')" class="px-3 sm:px-4 py-2 sm:py-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition font-semibold text-xs sm:text-sm flex-shrink-0">
+        👁️ Modal
       </button>
-      <button v-if="editingLanding.type === 'html'" @click="previewDirtyChanges('tab')" class="px-4 py-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition font-semibold">
-        👁️ Preview Tab
+      <button v-if="editingLanding.type === 'html'" @click="previewDirtyChanges('tab')" class="px-3 sm:px-4 py-2 sm:py-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition font-semibold text-xs sm:text-sm flex-shrink-0">
+        👁️ Tab
       </button>
-      <button @click="saveEdit" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
+      <button @click="saveEdit" class="flex-1 bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-700 transition font-semibold text-xs sm:text-sm">
         Save Changes
       </button>
-      <button @click="closeEditModal" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold">
+      <button @click="closeEditModal" class="px-3 sm:px-6 py-2 sm:py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold text-xs sm:text-sm flex-shrink-0">
         Cancel
       </button>
     </div>
@@ -63,9 +63,9 @@
 <div v-if="showPreviewModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-0 z-50">
   <div class="bg-white shadow-2xl w-full h-full max-h-screen flex flex-col">
     <!-- Header -->
-    <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center flex-shrink-0">
-      <h3 class="text-xl font-semibold text-gray-900">Preview - {{ editingLanding.name }}</h3>
-      <button @click="closePreviewModal" class="text-gray-500 hover:text-gray-700">
+    <div class="px-3 sm:px-6 py-3 sm:py-4 bg-gray-50 border-b flex justify-between items-center flex-shrink-0">
+      <h3 class="text-base sm:text-xl font-semibold text-gray-900 break-words flex-1">Preview - {{ editingLanding.name }}</h3>
+      <button @click="closePreviewModal" class="text-gray-500 hover:text-gray-700 flex-shrink-0">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>
@@ -83,8 +83,8 @@
     </div>
     
     <!-- Footer -->
-    <div class="px-6 py-4 bg-gray-50 border-t flex gap-3 justify-end flex-shrink-0">
-      <button @click="closePreviewModal" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold">
+    <div class="px-3 sm:px-6 py-3 sm:py-4 bg-gray-50 border-t flex gap-3 justify-end flex-shrink-0">
+      <button @click="closePreviewModal" class="px-4 sm:px-6 py-2 sm:py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold text-xs sm:text-sm">
         Close
       </button>
     </div>
