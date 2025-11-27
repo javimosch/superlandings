@@ -1,6 +1,7 @@
 const express = require('express');
 const { readDB } = require('../lib/db');
 const { hasRight } = require('../lib/auth');
+const { logAudit, AUDIT_ACTIONS } = require('../lib/audit');
 const { 
   createVersion, 
   getVersions, 
@@ -55,6 +56,15 @@ router.post('/', (req, res) => {
     if (!version) {
       return res.status(400).json({ error: 'Could not create version' });
     }
+
+    // Log audit event
+    logAudit(id, {
+      action: AUDIT_ACTIONS.VERSION_CREATE,
+      actor: req.currentUser?.email || 'admin',
+      isAdmin: req.adminAuth,
+      details: `Created manual snapshot${description ? `: ${description}` : ''}`,
+      metadata: { versionId: version.id, versionNumber: version.versionNumber }
+    });
 
     res.json(version);
   } catch (error) {
@@ -121,6 +131,15 @@ router.post('/:versionId/rollback', (req, res) => {
     rollbackToVersion(landing, versionId);
     
     console.log(`🔄 Rolled back landing "${landing.name}" to version ${versionId}`);
+
+    // Log audit event
+    logAudit(id, {
+      action: AUDIT_ACTIONS.ROLLBACK,
+      actor: req.currentUser?.email || 'admin',
+      isAdmin: req.adminAuth,
+      details: `Rolled back to version ${version.versionNumber || versionId}`,
+      metadata: { versionId, versionNumber: version.versionNumber }
+    });
 
     res.json({ 
       success: true, 
@@ -362,6 +381,15 @@ router.delete('/:versionId', (req, res) => {
       return res.status(404).json({ error: 'Version not found' });
     }
 
+    // Log audit event
+    logAudit(id, {
+      action: AUDIT_ACTIONS.VERSION_DELETE,
+      actor: req.currentUser?.email || 'admin',
+      isAdmin: req.adminAuth,
+      details: `Deleted version ${versionId}`,
+      metadata: { versionId }
+    });
+
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting version:', error);
@@ -383,6 +411,17 @@ router.put('/:versionId', (req, res) => {
     const updatedVersion = updateVersionMetadata(id, versionId, { description, tag });
     
     console.log(`📝 Updated version metadata for ${versionId}:`, { description, tag });
+
+    // Log audit event for tag changes
+    if (tag !== undefined) {
+      logAudit(id, {
+        action: tag ? AUDIT_ACTIONS.VERSION_TAG : AUDIT_ACTIONS.VERSION_UNTAG,
+        actor: req.currentUser?.email || 'admin',
+        isAdmin: req.adminAuth,
+        details: tag ? `Tagged version as "${tag}"` : 'Removed version tag',
+        metadata: { versionId, tag }
+      });
+    }
     
     res.json({ success: true, version: updatedVersion });
   } catch (error) {

@@ -2,6 +2,7 @@ const express = require('express');
 const { readDB, writeDB, migrateDomains } = require('../lib/db');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
 const { hasRight } = require('../lib/auth');
+const { logAudit, AUDIT_ACTIONS } = require('../lib/audit');
 
 const router = express.Router({ mergeParams: true });
 
@@ -42,6 +43,15 @@ router.post('/:domain/publish', async (req, res) => {
     writeDB(db);
 
     console.log(`✅ Domain ${domain} published successfully`);
+
+    // Log audit event
+    logAudit(id, {
+      action: AUDIT_ACTIONS.DOMAIN_PUBLISH,
+      actor: req.currentUser?.email || 'admin',
+      isAdmin: req.adminAuth,
+      details: `Published domain: ${domain}`,
+      metadata: { domain }
+    });
 
     res.json({ 
       success: true, 
@@ -98,6 +108,15 @@ router.post('/:domain/unpublish', async (req, res) => {
     writeDB(db);
 
     console.log(`✅ Domain ${domain} unpublished successfully`);
+
+    // Log audit event
+    logAudit(id, {
+      action: AUDIT_ACTIONS.DOMAIN_UNPUBLISH,
+      actor: req.currentUser?.email || 'admin',
+      isAdmin: req.adminAuth,
+      details: `Unpublished domain: ${domain}`,
+      metadata: { domain }
+    });
 
     res.json({ 
       success: true, 

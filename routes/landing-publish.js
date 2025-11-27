@@ -1,6 +1,7 @@
 const express = require('express');
 const { readDB, writeDB, migrateDomains } = require('../lib/db');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
+const { logAudit, AUDIT_ACTIONS } = require('../lib/audit');
 
 const router = express.Router({ mergeParams: true });
 
@@ -34,6 +35,15 @@ router.post('/publish', async (req, res) => {
 
     const domainUrls = landing.domains.map(d => `https://${d.domain}`).join(', ');
     console.log(`✅ Landing published successfully: ${domainUrls}`);
+
+    // Log audit event
+    logAudit(id, {
+      action: AUDIT_ACTIONS.PUBLISH,
+      actor: req.currentUser?.email || 'admin',
+      isAdmin: req.adminAuth,
+      details: `Published to: ${domainUrls}`,
+      metadata: { domains: domainStrings }
+    });
 
     res.json({ 
       success: true, 
@@ -72,6 +82,14 @@ router.post('/unpublish', async (req, res) => {
     writeDB(db);
 
     console.log(`✅ Landing unpublished successfully`);
+
+    // Log audit event
+    logAudit(id, {
+      action: AUDIT_ACTIONS.UNPUBLISH,
+      actor: req.currentUser?.email || 'admin',
+      isAdmin: req.adminAuth,
+      details: 'Landing unpublished'
+    });
 
     res.json({ 
       success: true, 

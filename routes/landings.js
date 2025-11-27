@@ -6,15 +6,18 @@ const { readDB, writeDB, LANDINGS_DIR, migrateDomains } = require('../lib/db');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
 const { hasRight } = require('../lib/auth');
 const { createVersion, deleteAllVersions } = require('../lib/versions');
+const { logAudit, deleteAuditLog, AUDIT_ACTIONS } = require('../lib/audit');
 const landingDomainsRouter = require('./landing-domains');
 const landingPublishRouter = require('./landing-publish');
 const landingVersionsRouter = require('./landing-versions');
+const landingAuditRouter = require('./landing-audit');
 
 const router = express.Router();
 
 // Mount sub-routers
 router.use('/:id/domains', landingDomainsRouter);
 router.use('/:id/versions', landingVersionsRouter);
+router.use('/:id/audit', landingAuditRouter);
 router.use('/:id', landingPublishRouter);
 
 // Get all landings (filtered by organization for non-admin users)
@@ -123,6 +126,15 @@ router.post('/', (req, res) => {
     db.landings.push(landing);
     writeDB(db);
 
+    // Log audit event
+    logAudit(landing.id, {
+      action: AUDIT_ACTIONS.CREATE,
+      actor: req.currentUser?.email || 'admin',
+      isAdmin: req.adminAuth,
+      details: `Created ${type} landing "${name}"`,
+      metadata: { slug, type, organizationId: orgId }
+    });
+
     res.json(landing);
   } catch (error) {
     console.error('Error creating landing:', error);
@@ -163,6 +175,16 @@ router.put('/:id', (req, res) => {
       landing.currentVersionNumber = afterVersion.versionNumber;
       
       writeDB(db);
+
+      // Log audit event
+      logAudit(id, {
+        action: AUDIT_ACTIONS.UPDATE,
+        actor: req.currentUser?.email || 'admin',
+        isAdmin: req.adminAuth,
+        details: 'Updated HTML content',
+        metadata: { versionNumber: afterVersion.versionNumber }
+      });
+
       res.json({ success: true });
     } else if (landing.type === 'ejs' && req.files && req.files.length > 0) {
       // Create version before update
@@ -199,6 +221,16 @@ router.put('/:id', (req, res) => {
       landing.currentVersionNumber = afterVersion.versionNumber;
       
       writeDB(db);
+
+      // Log audit event
+      logAudit(id, {
+        action: AUDIT_ACTIONS.UPDATE,
+        actor: req.currentUser?.email || 'admin',
+        isAdmin: req.adminAuth,
+        details: 'Updated EJS files',
+        metadata: { versionNumber: afterVersion.versionNumber }
+      });
+
       res.json({ success: true });
     } else {
       res.status(400).json({ error: 'Only HTML and EJS landings can be edited this way' });
@@ -268,6 +300,30 @@ router.put('/:id/domains', (req, res) => {
     landing.domains = newDomains;
     writeDB(db);
 
+    // Log audit event for domain changes
+    const addedDomains = newDomainStrings.filter(d => !oldDomainStrings.includes(d));
+    const removedDomains = oldDomainStrings.filter(d => !newDomainStrings.includes(d));
+    
+    if (addedDomains.length > 0) {
+      logAudit(id, {
+        action: AUDIT_ACTIONS.DOMAIN_ADD,
+        actor: req.currentUser?.email || 'admin',
+        isAdmin: req.adminAuth,
+        details: `Added domains: ${addedDomains.join(', ')}`,
+        metadata: { domains: addedDomains }
+      });
+    }
+    
+    if (removedDomains.length > 0) {
+      logAudit(id, {
+        action: AUDIT_ACTIONS.DOMAIN_REMOVE,
+        actor: req.currentUser?.email || 'admin',
+        isAdmin: req.adminAuth,
+        details: `Removed domains: ${removedDomains.join(', ')}`,
+        metadata: { domains: removedDomains }
+      });
+    }
+
     console.log(`✅ Domains updated successfully`);
 
     res.json({ success: true, landing });
@@ -315,6 +371,10 @@ router.delete('/:id', async (req, res) => {
     // Delete all versions for this landing
     deleteAllVersions(landing.id);
     console.log(`✅ Landing versions removed`);
+
+    // Delete audit log for this landing
+    deleteAuditLog(landing.id);
+    console.log(`✅ Landing audit log removed`);
 
     db.landings.splice(landingIndex, 1);
     writeDB(db);
