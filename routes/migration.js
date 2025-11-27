@@ -1,5 +1,6 @@
 const express = require('express');
 const { readDB, writeDB } = require('../lib/db');
+const { migrateExistingLandings } = require('../lib/migrate-versions');
 
 const router = express.Router();
 
@@ -111,6 +112,26 @@ router.post('/move-landing', (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error moving landing:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Version Migration - add version tracking to existing landings
+router.post('/versions', (req, res) => {
+  if (!req.adminAuth) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    const migratedCount = migrateExistingLandings();
+    
+    res.json({ 
+      success: true, 
+      message: `Version migration completed. ${migratedCount} landings processed.`,
+      migratedCount
+    });
+  } catch (error) {
+    console.error('❌ Error running version migration:', error);
     res.status(500).json({ error: error.message });
   }
 });

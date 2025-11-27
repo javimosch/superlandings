@@ -510,6 +510,22 @@
         }
       },
       
+      // Version Migration
+      async runVersionMigration() {
+        this.loading.versionMigration = true;
+        try {
+          const res = await fetch('/api/migration/versions', { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess(data.message);
+          await this.loadLandings();
+        } catch (err) {
+          this.showError('Error running version migration: ' + err.message);
+        } finally {
+          this.loading.versionMigration = false;
+        }
+      },
+      
       // Move Landing
       openMoveModal(landing) {
         this.movingLanding = landing;

@@ -8,6 +8,11 @@
       <span v-if="loading.migration">⏳ Migrating...</span>
       <span v-else>🔄 Migration RBAC</span>
     </button>
+    <!-- Admin: Migration Versions -->
+    <button v-if="authInfo.isAdmin" @click="runVersionMigration" :disabled="loading.versionMigration" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-semibold shadow-md disabled:opacity-50">
+      <span v-if="loading.versionMigration">⏳ Migrating...</span>
+      <span v-else>📜 Migration Versions</span>
+    </button>
   </div>
 
   <div class="bg-white rounded-lg shadow-md overflow-hidden">
@@ -47,6 +52,9 @@
                 </template>
               </span>
               <span class="text-xs text-gray-500">{{ formatDate(landing.createdAt) }}</span>
+              <span v-if="landing.currentVersionNumber" class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
+                📜 v{{ landing.currentVersionNumber }}
+              </span>
             </div>
           </div>
           <div class="flex gap-2 flex-wrap">
