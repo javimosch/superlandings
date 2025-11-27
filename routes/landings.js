@@ -115,6 +115,11 @@ router.post('/', (req, res) => {
       }
     }
 
+    // Create initial version
+    const initialVersion = createVersion(landing, 'Initial version');
+    landing.currentVersionId = initialVersion.id;
+    landing.currentVersionNumber = initialVersion.versionNumber;
+
     db.landings.push(landing);
     writeDB(db);
 
@@ -149,6 +154,15 @@ router.put('/:id', (req, res) => {
       createVersion(landing, 'Before edit');
       
       fs.writeFileSync(path.join(landingDir, 'index.html'), content);
+      
+      // Create version after update
+      const afterVersion = createVersion(landing, 'After edit');
+      
+      // Update landing to point to the new version
+      landing.currentVersionId = afterVersion.id;
+      landing.currentVersionNumber = afterVersion.versionNumber;
+      
+      writeDB(db);
       res.json({ success: true });
     } else if (landing.type === 'ejs' && req.files && req.files.length > 0) {
       // Create version before update
@@ -176,6 +190,15 @@ router.put('/:id', (req, res) => {
           fs.renameSync(file.path, dest);
         });
       }
+      
+      // Create version after update
+      const afterVersion = createVersion(landing, 'After edit');
+      
+      // Update landing to point to the new version
+      landing.currentVersionId = afterVersion.id;
+      landing.currentVersionNumber = afterVersion.versionNumber;
+      
+      writeDB(db);
       res.json({ success: true });
     } else {
       res.status(400).json({ error: 'Only HTML and EJS landings can be edited this way' });
