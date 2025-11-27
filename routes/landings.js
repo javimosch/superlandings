@@ -162,13 +162,10 @@ router.put('/:id', (req, res) => {
     const landingDir = path.join(LANDINGS_DIR, landing.slug);
 
     if (landing.type === 'html') {
-      // Create version before update
-      const beforeVersion = createVersion(landing, 'Before edit');
-      
       fs.writeFileSync(path.join(landingDir, 'index.html'), content);
       
       // Create version after update
-      const afterVersion = createVersion(landing, 'After edit');
+      const afterVersion = createVersion(landing, 'Updated content');
       
       // Update landing to point to the new version
       landing.currentVersionId = afterVersion.id;
@@ -176,21 +173,18 @@ router.put('/:id', (req, res) => {
       
       writeDB(db);
 
-      // Log audit event with linked versions
+      // Log audit event with linked version
       logAudit(id, {
         action: AUDIT_ACTIONS.UPDATE,
         actor: req.currentUser?.email || 'admin',
         isAdmin: req.adminAuth,
         details: 'Updated HTML content',
         metadata: { versionNumber: afterVersion.versionNumber },
-        versionIds: [beforeVersion.id, afterVersion.id]
+        versionIds: [afterVersion.id]
       });
 
       res.json({ success: true });
     } else if (landing.type === 'ejs' && req.files && req.files.length > 0) {
-      // Create version before update
-      const beforeVersion = createVersion(landing, 'Before edit');
-      
       // Clear all existing files in the landing directory first
       const files = fs.readdirSync(landingDir);
       for (const file of files) {
@@ -215,7 +209,7 @@ router.put('/:id', (req, res) => {
       }
       
       // Create version after update
-      const afterVersion = createVersion(landing, 'After edit');
+      const afterVersion = createVersion(landing, 'Updated EJS files');
       
       // Update landing to point to the new version
       landing.currentVersionId = afterVersion.id;
@@ -223,14 +217,14 @@ router.put('/:id', (req, res) => {
       
       writeDB(db);
 
-      // Log audit event with linked versions
+      // Log audit event with linked version
       logAudit(id, {
         action: AUDIT_ACTIONS.UPDATE,
         actor: req.currentUser?.email || 'admin',
         isAdmin: req.adminAuth,
         details: 'Updated EJS files',
         metadata: { versionNumber: afterVersion.versionNumber },
-        versionIds: [beforeVersion.id, afterVersion.id]
+        versionIds: [afterVersion.id]
       });
 
       res.json({ success: true });
