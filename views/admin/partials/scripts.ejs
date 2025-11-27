@@ -1,0 +1,436 @@
+<script>
+  const { createApp } = Vue;
+
+  createApp({
+    data() {
+      return {
+        landings: [],
+        showAddModal: false,
+        showEditModal: false,
+        newLanding: { name: '', slug: '', type: 'html', domains: [], content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Landing</title>\n</head>\n<body>\n  <h1>Hello World!</h1>\n</body>\n</html>' },
+        selectedEjsFiles: [],
+        selectedEjsZip: null,
+        editSelectedEjsFiles: [],
+        editSelectedEjsZip: null,
+        editingDomains: null,
+        showDomainsModal: false,
+        showAdminDomainsModal: false,
+        adminConfig: { domains: [], published: false, traefikConfigFile: '' },
+        editingLanding: null,
+        addEditor: null,
+        editEditor: null,
+        loading: {},
+        toasts: [],
+        toastId: 0
+      };
+    },
+    mounted() {
+      this.loadLandings();
+      this.loadAdminConfig();
+    },
+    methods: {
+      addToast(type, message, duration = 5000) {
+        const id = ++this.toastId;
+        this.toasts.push({ id, type, message });
+        setTimeout(() => this.removeToast(id), duration);
+      },
+      removeToast(id) {
+        const index = this.toasts.findIndex(t => t.id === id);
+        if (index !== -1) this.toasts.splice(index, 1);
+      },
+      showError(message) {
+        this.addToast('error', message);
+      },
+      showSuccess(message) {
+        this.addToast('success', message, 3000);
+      },
+      async loadLandings() {
+        try {
+          const res = await fetch('/api/landings');
+          this.landings = await res.json();
+        } catch (err) {
+          this.showError('Error loading landings: ' + err.message);
+        }
+      },
+      async loadAdminConfig() {
+        try {
+          const res = await fetch('/api/admin-config');
+          this.adminConfig = await res.json();
+        } catch (err) {
+          this.showError('Error loading admin config: ' + err.message);
+        }
+      },
+      formatDate(dateStr) {
+        return new Date(dateStr).toLocaleDateString();
+      },
+      closeAddModal() {
+        this.showAddModal = false;
+        this.newLanding = { name: '', slug: '', type: 'html', domains: [], content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Landing</title>\n</head>\n<body>\n  <h1>Hello World!</h1>\n</body>\n</html>' };
+        this.selectedEjsFiles = [];
+        this.selectedEjsZip = null;
+        if (this.addEditor) {
+          this.addEditor.toTextArea();
+          this.addEditor = null;
+        }
+      },
+      async addLanding() {
+        try {
+          const formData = new FormData();
+          formData.append('name', this.newLanding.name);
+          formData.append('slug', this.newLanding.slug);
+          formData.append('type', this.newLanding.type);
+          const domains = this.newLanding.domains
+            .filter(d => typeof d === 'string' ? d.trim() : d.domain && d.domain.trim())
+            .map(d => typeof d === 'string' ? { domain: d.trim(), published: false } : d);
+          formData.append('domains', JSON.stringify(domains));
+
+          if (this.newLanding.type === 'html') {
+            formData.append('content', this.addEditor ? this.addEditor.getValue() : this.newLanding.content);
+          } else if (this.newLanding.type === 'ejs') {
+            if (this.selectedEjsZip) {
+              formData.append('files', this.selectedEjsZip);
+            } else if (this.selectedEjsFiles.length > 0) {
+              this.selectedEjsFiles.forEach(file => {
+                formData.append('files', file);
+              });
+            }
+          } else if (this.$refs.fileInput && this.$refs.fileInput.files.length > 0) {
+            Array.from(this.$refs.fileInput.files).forEach(file => {
+              formData.append('files', file);
+            });
+          }
+
+          const res = await fetch('/api/landings', { method: 'POST', body: formData });
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error(data.error);
+          
+          this.showSuccess('Landing created successfully!');
+          this.closeAddModal();
+          this.loadLandings();
+        } catch (err) {
+          this.showError('Error creating landing: ' + err.message);
+        }
+      },
+      async editLanding(landing) {
+        try {
+          if (landing.type === 'html') {
+            const res = await fetch(`/api/landings/${landing.id}/content`);
+            const data = await res.json();
+            this.editingLanding = { ...landing, content: data.content };
+          } else {
+            this.editingLanding = { ...landing };
+          }
+          this.showEditModal = true;
+          this.$nextTick(() => {
+            if (landing.type === 'html') {
+              this.initEditEditor();
+            }
+          });
+        } catch (err) {
+          this.showError('Error loading landing: ' + err.message);
+        }
+      },
+      async saveEdit() {
+        try {
+          if (this.editingLanding.type === 'html') {
+            const content = this.editEditor.getValue();
+            const res = await fetch(`/api/landings/${this.editingLanding.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content })
+            });
+            
+            if (!res.ok) throw new Error('Failed to save');
+          } else if (this.editingLanding.type === 'ejs') {
+            const formData = new FormData();
+            if (this.editSelectedEjsZip) {
+              formData.append('files', this.editSelectedEjsZip);
+            } else if (this.editSelectedEjsFiles.length > 0) {
+              this.editSelectedEjsFiles.forEach(file => {
+                formData.append('files', file);
+              });
+            } else {
+              this.showError('Please select EJS files or a ZIP file to update');
+              return;
+            }
+            
+            const res = await fetch(`/api/landings/${this.editingLanding.id}`, {
+              method: 'PUT',
+              body: formData
+            });
+            
+            if (!res.ok) throw new Error('Failed to save');
+          }
+          
+          this.showSuccess('Changes saved successfully!');
+          this.closeEditModal();
+          this.loadLandings();
+        } catch (err) {
+          this.showError('Error saving: ' + err.message);
+        }
+      },
+      closeEditModal() {
+        this.showEditModal = false;
+        this.editingLanding = null;
+        this.editSelectedEjsFiles = [];
+        this.editSelectedEjsZip = null;
+        if (this.editEditor) {
+          this.editEditor.toTextArea();
+          this.editEditor = null;
+        }
+      },
+      openDomainsModal(landing) {
+        this.editingDomains = { 
+          ...landing, 
+          domains: landing.domains.map(d => ({ ...d })) 
+        };
+        this.showDomainsModal = true;
+      },
+      closeDomainsModal() {
+        this.showDomainsModal = false;
+        this.editingDomains = null;
+      },
+      addDomain() {
+        this.editingDomains.domains.push({ domain: '', published: false });
+      },
+      removeDomain(index) {
+        this.editingDomains.domains.splice(index, 1);
+      },
+      async publishSingleDomain(domain) {
+        const loadingKey = this.editingDomains.id + '-' + domain;
+        this.loading[loadingKey] = true;
+        try {
+          const res = await fetch(`/api/landings/${this.editingDomains.id}/domains/${encodeURIComponent(domain)}/publish`, { method: 'POST' });
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error(data.error);
+          
+          this.showSuccess(data.message);
+          await this.loadLandings();
+          const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
+          if (domainObj) domainObj.published = true;
+        } catch (err) {
+          this.showError('Error publishing domain: ' + err.message);
+        } finally {
+          this.loading[loadingKey] = false;
+        }
+      },
+      async unpublishSingleDomain(domain) {
+        const loadingKey = this.editingDomains.id + '-' + domain;
+        this.loading[loadingKey] = true;
+        try {
+          const res = await fetch(`/api/landings/${this.editingDomains.id}/domains/${encodeURIComponent(domain)}/unpublish`, { method: 'POST' });
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error(data.error);
+          
+          this.showSuccess(data.message);
+          await this.loadLandings();
+          const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
+          if (domainObj) domainObj.published = false;
+        } catch (err) {
+          this.showError('Error unpublishing domain: ' + err.message);
+        } finally {
+          this.loading[loadingKey] = false;
+        }
+      },
+      async saveDomains() {
+        try {
+          const domainPattern = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          const domains = this.editingDomains.domains
+            .filter(d => d.domain && d.domain.trim())
+            .map(d => ({ domain: d.domain.trim(), published: d.published || false }));
+          
+          const invalidDomains = domains.filter(d => !domainPattern.test(d.domain));
+          if (invalidDomains.length > 0) {
+            this.showError('Invalid domain format: ' + invalidDomains.map(d => d.domain).join(', '));
+            return;
+          }
+          
+          const res = await fetch(`/api/landings/${this.editingDomains.id}/domains`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domains })
+          });
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error(data.error);
+          
+          this.showSuccess('Domains updated successfully!');
+          this.closeDomainsModal();
+          this.loadLandings();
+        } catch (err) {
+          this.showError('Error updating domains: ' + err.message);
+        }
+      },
+      async publishLanding(id) {
+        this.loading[id] = true;
+        try {
+          const res = await fetch(`/api/landings/${id}/publish`, { method: 'POST' });
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error(data.error);
+          
+          this.showSuccess(data.message);
+          this.loadLandings();
+        } catch (err) {
+          this.showError('Error publishing: ' + err.message);
+        } finally {
+          this.loading[id] = false;
+        }
+      },
+      async unpublishLanding(id) {
+        this.loading[id] = true;
+        try {
+          const res = await fetch(`/api/landings/${id}/unpublish`, { method: 'POST' });
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error(data.error);
+          
+          this.showSuccess(data.message);
+          this.loadLandings();
+        } catch (err) {
+          this.showError('Error unpublishing: ' + err.message);
+        } finally {
+          this.loading[id] = false;
+        }
+      },
+      async deleteLanding(id) {
+        try {
+          const res = await fetch(`/api/landings/${id}`, { method: 'DELETE' });
+          if (!res.ok) throw new Error('Failed to delete');
+          
+          this.showSuccess('Landing deleted successfully!');
+          this.loadLandings();
+        } catch (err) {
+          this.showError('Error deleting landing: ' + err.message);
+        }
+      },
+      async saveAdminDomains() {
+        try {
+          const domainPattern = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          const domains = this.adminConfig.domains
+            .filter(d => d.domain && d.domain.trim())
+            .map(d => ({ domain: d.domain.trim(), published: d.published || false }));
+          
+          const invalidDomains = domains.filter(d => !domainPattern.test(d.domain));
+          if (invalidDomains.length > 0) {
+            this.showError('Invalid domain format: ' + invalidDomains.map(d => d.domain).join(', '));
+            return;
+          }
+          
+          const res = await fetch('/api/admin-config/domains', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domains })
+          });
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error(data.error);
+          
+          this.showSuccess('Admin domains updated successfully!');
+          this.loadAdminConfig();
+        } catch (err) {
+          this.showError('Error updating admin domains: ' + err.message);
+        }
+      },
+      async publishAdmin() {
+        this.loading.admin = true;
+        try {
+          const res = await fetch('/api/admin-config/publish', { method: 'POST' });
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error(data.error);
+          
+          this.showSuccess(data.message);
+          this.loadAdminConfig();
+        } catch (err) {
+          this.showError('Error publishing admin: ' + err.message);
+        } finally {
+          this.loading.admin = false;
+        }
+      },
+      async unpublishAdmin() {
+        this.loading.admin = true;
+        try {
+          const res = await fetch('/api/admin-config/unpublish', { method: 'POST' });
+          const data = await res.json();
+          
+          if (!res.ok) throw new Error(data.error);
+          
+          this.showSuccess(data.message);
+          this.loadAdminConfig();
+        } catch (err) {
+          this.showError('Error unpublishing admin: ' + err.message);
+        } finally {
+          this.loading.admin = false;
+        }
+      },
+      handleEjsFilesChange(event) {
+        this.selectedEjsFiles = Array.from(event.target.files);
+        this.selectedEjsZip = null;
+        if (this.$refs.ejsZipInput) {
+          this.$refs.ejsZipInput.value = '';
+        }
+      },
+      handleEjsZipChange(event) {
+        this.selectedEjsZip = event.target.files[0] || null;
+        this.selectedEjsFiles = [];
+        if (this.$refs.ejsFileInput) {
+          this.$refs.ejsFileInput.value = '';
+        }
+      },
+      handleEditEjsFilesChange(event) {
+        this.editSelectedEjsFiles = Array.from(event.target.files);
+        this.editSelectedEjsZip = null;
+        if (this.$refs.editEjsZipInput) {
+          this.$refs.editEjsZipInput.value = '';
+        }
+      },
+      handleEditEjsZipChange(event) {
+        this.editSelectedEjsZip = event.target.files[0] || null;
+        this.editSelectedEjsFiles = [];
+        if (this.$refs.editEjsFileInput) {
+          this.$refs.editEjsFileInput.value = '';
+        }
+      },
+      initAddEditor() {
+        if (this.$refs.addEditorContainer && !this.addEditor) {
+          const textarea = document.createElement('textarea');
+          textarea.value = this.newLanding.content;
+          this.$refs.addEditorContainer.appendChild(textarea);
+          this.addEditor = CodeMirror.fromTextArea(textarea, {
+            mode: 'htmlmixed',
+            lineNumbers: true,
+            theme: 'default',
+            lineWrapping: true
+          });
+        }
+      },
+      initEditEditor() {
+        if (this.$refs.editEditorContainer && !this.editEditor) {
+          const textarea = document.createElement('textarea');
+          textarea.value = this.editingLanding.content;
+          this.$refs.editEditorContainer.appendChild(textarea);
+          this.editEditor = CodeMirror.fromTextArea(textarea, {
+            mode: 'htmlmixed',
+            lineNumbers: true,
+            theme: 'default',
+            lineWrapping: true
+          });
+          this.editEditor.setSize('100%', '400px');
+        }
+      }
+    },
+    watch: {
+      showAddModal(val) {
+        if (val) {
+          this.$nextTick(() => {
+            this.initAddEditor();
+          });
+        }
+      }
+    }
+  }).mount('#app');
+</script>

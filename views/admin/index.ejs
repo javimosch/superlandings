@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperLandings Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+  <style>
+    .CodeMirror { height: 400px; border: 1px solid #ddd; border-radius: 4px; }
+    /* Toast animations */
+    .toast-enter { animation: slideIn 0.3s ease-out; }
+    .toast-leave { animation: slideOut 0.3s ease-in; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div id="app" class="min-h-screen">
+    <%- include('partials/header') %>
+    <%- include('partials/main') %>
+    <%- include('partials/toasts') %>
+    <%- include('partials/modals/add-landing') %>
+    <%- include('partials/modals/edit-landing') %>
+    <%- include('partials/modals/domains') %>
+    <%- include('partials/modals/admin-domains') %>
+  </div>
+  <%- include('partials/scripts') %>
+</body>
+</html>

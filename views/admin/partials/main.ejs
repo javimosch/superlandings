@@ -1,0 +1,69 @@
+<main class="container mx-auto px-4 py-8">
+  <div class="mb-6">
+    <button @click="showAddModal = true" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-semibold shadow-md">
+      + Add New Landing
+    </button>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <div class="px-6 py-4 bg-gray-50 border-b">
+      <h2 class="text-xl font-semibold text-gray-800">Landing Pages</h2>
+    </div>
+    
+    <div v-if="landings.length === 0" class="px-6 py-12 text-center text-gray-500">
+      <p class="text-lg">No landing pages yet. Create your first one!</p>
+    </div>
+
+    <div v-else class="divide-y">
+      <div v-for="landing in landings" :key="landing.id" class="px-6 py-4 hover:bg-gray-50 transition">
+        <div class="flex items-center justify-between">
+          <div class="flex-1">
+            <h3 class="text-lg font-semibold text-gray-900">{{ landing.name }}</h3>
+            <div class="mt-1 flex items-center gap-4 text-sm text-gray-600">
+              <span class="flex items-center">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                </svg>
+                <a :href="'/' + landing.slug" target="_blank" class="hover:text-blue-600">/{{ landing.slug }}</a>
+              </span>
+              <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium uppercase">{{ landing.type }}</span>
+              <span v-if="landing.published" class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">✓ Published</span>
+              <span v-if="landing.domains && landing.domains.length > 0" class="text-xs text-gray-600">
+                🌐 
+                <template v-if="landing.published">
+                  <template v-for="(domainObj, idx) in landing.domains.filter(d => d.published)" :key="idx">
+                    <a :href="'https://' + domainObj.domain" target="_blank" class="text-green-600 hover:text-blue-600 underline">{{ domainObj.domain }}</a><span v-if="idx < landing.domains.filter(d => d.published).length - 1">, </span>
+                  </template>
+                  <span v-if="landing.domains.some(d => !d.published)" class="text-gray-400 ml-1">({{ landing.domains.filter(d => !d.published).length }} unpublished)</span>
+                </template>
+                <template v-else>
+                  {{ landing.domains.length }} domain{{ landing.domains.length > 1 ? 's' : '' }}
+                </template>
+              </span>
+              <span class="text-xs text-gray-500">{{ formatDate(landing.createdAt) }}</span>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button @click="openDomainsModal(landing)" class="px-3 py-2 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition text-sm font-medium">
+              🌐 Domains
+            </button>
+            <button v-if="!landing.published && landing.domains && landing.domains.length > 0" @click="publishLanding(landing.id)" :disabled="loading[landing.id]" class="px-3 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200 transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+              <span v-if="loading[landing.id]">⏳ Publishing...</span>
+              <span v-else>Publish</span>
+            </button>
+            <button v-if="landing.published" @click="unpublishLanding(landing.id)" :disabled="loading[landing.id]" class="px-3 py-2 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+              <span v-if="loading[landing.id]">⏳ Unpublishing...</span>
+              <span v-else>Unpublish</span>
+            </button>
+            <button v-if="landing.type === 'html' || landing.type === 'ejs'" @click="editLanding(landing)" class="px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition text-sm font-medium">
+              Edit
+            </button>
+            <button @click="deleteLanding(landing.id)" class="px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition text-sm font-medium">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>

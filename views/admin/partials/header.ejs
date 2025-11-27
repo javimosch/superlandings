@@ -1,0 +1,26 @@
+<header class="bg-blue-600 text-white shadow-lg">
+  <div class="container mx-auto px-4 py-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold">SuperLandings Admin</h1>
+        <p class="text-blue-100 mt-1">Manage your landing pages</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <div v-if="adminConfig.domains && adminConfig.domains.length > 0" class="text-sm">
+          <span class="text-blue-100">Admin domains:</span>
+          <template v-if="adminConfig.published">
+            <template v-for="(domainObj, idx) in adminConfig.domains.filter(d => d.published)" :key="idx">
+              <a :href="'https://' + domainObj.domain" target="_blank" class="ml-2 hover:text-white underline">{{ domainObj.domain }}</a><span v-if="idx < adminConfig.domains.filter(d => d.published).length - 1">,</span>
+            </template>
+          </template>
+          <template v-else>
+            <span class="ml-2">{{ adminConfig.domains.map(d => d.domain).join(', ') }}</span>
+          </template>
+        </div>
+        <button @click="showAdminDomainsModal = true" class="px-4 py-2 bg-blue-500 hover:bg-blue-400 rounded-lg transition text-sm font-medium">
+          ⚙️ Admin Domains
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
