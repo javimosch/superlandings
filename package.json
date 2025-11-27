@@ -8,17 +8,32 @@
     "dev": "nodemon --verbose --ignore data server.js",
     "cli": "node cli.js"
   },
-  "keywords": ["landing pages", "static sites", "ejs", "traefik", "reverse-proxy", "custom domains", "admin panel", "cms", "docker", "docker-compose", "publishing"],
+  "keywords": [
+    "landing pages",
+    "static sites",
+    "ejs",
+    "traefik",
+    "reverse-proxy",
+    "custom domains",
+    "admin panel",
+    "cms",
+    "docker",
+    "docker-compose",
+    "publishing"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "express-basic-auth": "^1.2.1",
-    "multer": "^1.4.5-lts.1",
+    "adm-zip": "^0.5.10",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.6",
     "dotenv": "^16.3.1",
     "ejs": "^3.1.9",
-    "adm-zip": "^0.5.10",
-    "bcryptjs": "^2.4.3"
+    "express": "^4.18.2",
+    "express-basic-auth": "^1.2.1",
+    "express-session": "^1.18.2",
+    "multer": "^1.4.5-lts.1",
+    "session-file-store": "^1.5.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

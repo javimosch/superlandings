@@ -2,10 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
+const session = require('express-session');
+const FileStore = require('session-file-store')(session);
 
 // Local modules
 const { ensureDirectories, DATA_DIR, LANDINGS_DIR } = require('./lib/db');
-const { adminBasicAuth, setCurrentOrganization } = require('./lib/auth');
+const { sessionAuth, setCurrentOrganization, handleLogin } = require('./lib/auth');
 const landingsRouter = require('./routes/landings');
 const adminConfigRouter = require('./routes/admin-config');
 const organizationsRouter = require('./routes/organizations');
@@ -24,6 +26,24 @@ ensureDirectories();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Session middleware with file store
+app.use(session({
+  store: new FileStore({
+    path: path.join(DATA_DIR, 'sessions'),
+    ttl: 24 * 60 * 60 * 30, // 1 month
+    reapInterval: 60 * 60 // Cleanup every hour
+  }),
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'strict',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
 // EJS setup - views directory includes both admin views and landing views
 app.set('view engine', 'ejs');
 app.set('views', [path.join(__dirname, 'views'), LANDINGS_DIR]);
@@ -39,20 +59,64 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Admin panel route (EJS)
-app.get('/admin', adminBasicAuth, (req, res) => {
+// Login page route
+app.get('/login', (req, res) => {
+  res.render('admin/login');
+});
+
+// Login endpoint
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password required' });
+  }
+
+  const result = handleLogin(req, username, password);
+  
+  if (!result.success) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+
+  res.json({
+    success: true,
+    user: result.user
+  });
+});
+
+// Logout endpoint
+app.get('/api/logout', sessionAuth, (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Logout failed' });
+    }
+    res.clearCookie('connect.sid');
+    res.json({ success: true });
+  });
+});
+
+// Root redirect to admin
+app.get('/', (req, res) => {
+  res.redirect('/admin');
+});
+
+// Admin panel route (EJS) with auth check
+app.get('/admin', (req, res) => {
+  if (!req.session || !req.session.user) {
+    return res.redirect('/login');
+  }
   res.render('admin/index');
 });
 
 // API routes with auth and organization context
-app.use('/api/landings', adminBasicAuth, setCurrentOrganization, upload.array('files'), landingsRouter);
-app.use('/api/admin-config', adminBasicAuth, adminConfigRouter);
-app.use('/api/organizations', adminBasicAuth, organizationsRouter);
-app.use('/api/users', adminBasicAuth, usersRouter);
-app.use('/api/migration', adminBasicAuth, migrationRouter);
+app.use('/api/landings', sessionAuth, setCurrentOrganization, upload.array('files'), landingsRouter);
+app.use('/api/admin-config', sessionAuth, adminConfigRouter);
+app.use('/api/organizations', sessionAuth, organizationsRouter);
+app.use('/api/users', sessionAuth, usersRouter);
+app.use('/api/migration', sessionAuth, migrationRouter);
 
 // Auth info endpoint
-app.get('/api/auth/me', adminBasicAuth, setCurrentOrganization, (req, res) => {
+app.get('/api/auth/me', sessionAuth, setCurrentOrganization, (req, res) => {
   res.json({
     isAdmin: req.adminAuth,
     user: req.currentUser ? { email: req.currentUser.email, isAdmin: req.currentUser.isAdmin } : null,
@@ -67,14 +131,6 @@ app.use('/*', domainStaticMiddleware);
 
 // Static asset middleware for slug-based routing
 app.use('/:slug/*', slugStaticMiddleware);
-
-// Domain-based landing serving (root path)
-app.get('/', serveLandingByDomain);
-
-// Default admin route (fallback for root)
-app.get('/', adminBasicAuth, (req, res) => {
-  res.render('admin/index');
-});
 
 // Slug-based landing serving
 app.get('/:slug', serveLandingBySlug);

@@ -2,10 +2,18 @@
   <div class="container mx-auto px-4 py-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold">SuperLandings Admin</h1>
-        <p class="text-blue-100 mt-1">Manage your landing pages</p>
+        <h1 class="text-3xl font-bold">SuperLandings</h1>
+<p class="text-blue-100 mt-1">High-converting landing and waiting-list pages, built in seconds</p>
       </div>
       <div class="flex items-center gap-4">
+        <!-- Current User -->
+        <div class="flex items-center gap-2">
+          <span class="text-blue-200 text-sm">Logged as:</span>
+          <span class="px-3 py-1 bg-green-500 rounded-lg text-sm font-medium">
+            {{ authInfo.isAdmin ? 'admin' : (authInfo.user?.email || 'unknown') }}
+          </span>
+        </div>
+
         <!-- Current Organization -->
         <div v-if="currentOrganization" class="flex items-center gap-2">
           <span class="text-blue-200 text-sm">Org:</span>
@@ -34,6 +42,11 @@
             ⚙️ Admin Domains
           </button>
         </template>
+        
+        <!-- Logout Button -->
+        <button @click="logout" class="px-4 py-2 bg-red-500 hover:bg-red-400 rounded-lg transition text-sm font-medium">
+          🚪 Logout
+        </button>
       </div>
     </div>
   </div>

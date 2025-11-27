@@ -19,10 +19,11 @@ router.get('/', (req, res) => {
   const db = readDB();
   let landings = db.landings || [];
   
-  // Filter by organization if not admin
-  if (!req.adminAuth && req.currentOrganization) {
+  // Filter by organization if current organization is set
+  if (req.currentOrganization) {
     landings = landings.filter(l => l.organizationId === req.currentOrganization.id);
   } else if (!req.adminAuth && req.userOrganizations) {
+    // Fallback: show all user's organizations if no specific organization is selected
     const orgIds = req.userOrganizations.map(o => o.id);
     landings = landings.filter(l => orgIds.includes(l.organizationId));
   }

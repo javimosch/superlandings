@@ -71,9 +71,9 @@
       }
     },
     async mounted() {
-      await this.loadAuthInfo();
       await this.loadOrganizations();
       this.initCurrentOrganization();
+      await this.loadAuthInfo();
       await this.loadLandings();
       await this.loadAdminConfig();
       if (this.authInfo.isAdmin) {
@@ -684,6 +684,19 @@
         this.editSelectedEjsZip = event.target.files[0] || null;
         this.editSelectedEjsFiles = [];
         if (this.$refs.editEjsFileInput) this.$refs.editEjsFileInput.value = '';
+      },
+      
+      // Logout
+      async logout() {
+        try {
+          // Call logout endpoint which returns 401 to clear browser credentials
+          await fetch('/api/logout');
+        } catch (err) {
+          console.log('Logout request completed');
+        }
+        
+        // Redirect to login page
+        window.location.href = '/login';
       },
       
       // Editors

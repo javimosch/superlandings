@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperLandings Admin - Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-600 to-blue-800 min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-md">
+    <div class="bg-white rounded-lg shadow-2xl p-8">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">SuperLandings</h1>
+        <p class="text-gray-600 mt-2">Admin Panel</p>
+      </div>
+
+      <form id="loginForm" class="space-y-6">
+        <div>
+          <label for="username" class="block text-sm font-medium text-gray-700 mb-2">
+            Username or Email
+          </label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            required
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+            placeholder="Enter your username"
+          />
+        </div>
+
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+            Password
+          </label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+            placeholder="Enter your password"
+          />
+        </div>
+
+        <button
+          type="submit"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200"
+        >
+          Login
+        </button>
+      </form>
+
+      <div id="errorMessage" class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm hidden"></div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const errorDiv = document.getElementById('errorMessage');
+      
+      try {
+        // Make a POST request to /api/login
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include', // Include cookies for session
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          // Login successful, redirect to admin panel
+          window.location.href = '/admin';
+        } else {
+          // Invalid credentials
+          errorDiv.textContent = data.error || 'Invalid username or password';
+          errorDiv.classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        errorDiv.textContent = 'An error occurred. Please try again.';
+        errorDiv.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>
