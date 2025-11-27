@@ -1288,6 +1288,14 @@
     watch: {
       showAddModal(val) {
         if (val) this.$nextTick(() => this.initAddEditor());
+      },
+      async showOrganizationsModal(val) {
+        if (val) {
+          await this.loadOrganizations();
+          if (this.authInfo.isAdmin) {
+            await this.loadAllUsers();
+          }
+        }
       }
     }
   }).mount('#app');
