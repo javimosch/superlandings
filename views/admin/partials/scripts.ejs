@@ -81,6 +81,14 @@
         viewingHtmlVersion: null,
         versionHtmlContent: '',
         
+        // Audit Modal
+        showAuditModal: false,
+        auditLanding: null,
+        auditEntries: [],
+        auditTotal: 0,
+        auditHasMore: false,
+        auditOffset: 0,
+        
         // UI State
         loading: {},
         toasts: [],
@@ -1058,6 +1066,107 @@
           });
         });
         return total;
+      },
+      
+      // Audit
+      async openAuditModal(landing) {
+        this.auditLanding = landing;
+        this.auditEntries = [];
+        this.auditTotal = 0;
+        this.auditHasMore = false;
+        this.auditOffset = 0;
+        this.showAuditModal = true;
+        await this.loadAuditLog();
+      },
+      
+      closeAuditModal() {
+        this.showAuditModal = false;
+        this.auditLanding = null;
+        this.auditEntries = [];
+        this.auditTotal = 0;
+        this.auditHasMore = false;
+        this.auditOffset = 0;
+      },
+      
+      async loadAuditLog() {
+        if (!this.auditLanding) return;
+        this.loading.audit = true;
+        try {
+          const res = await fetch(`/api/landings/${this.auditLanding.id}/audit?limit=50&offset=${this.auditOffset}`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.auditEntries = data.entries;
+          this.auditTotal = data.total;
+          this.auditHasMore = data.hasMore;
+        } catch (err) {
+          this.showError('Error loading audit log: ' + err.message);
+        } finally {
+          this.loading.audit = false;
+        }
+      },
+      
+      async loadMoreAudit() {
+        if (!this.auditLanding || !this.auditHasMore) return;
+        this.loading.auditMore = true;
+        try {
+          this.auditOffset += 50;
+          const res = await fetch(`/api/landings/${this.auditLanding.id}/audit?limit=50&offset=${this.auditOffset}`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.auditEntries = [...this.auditEntries, ...data.entries];
+          this.auditHasMore = data.hasMore;
+        } catch (err) {
+          this.showError('Error loading more audit entries: ' + err.message);
+        } finally {
+          this.loading.auditMore = false;
+        }
+      },
+      
+      formatAuditDate(dateStr) {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleString();
+      },
+      
+      formatAuditAction(action) {
+        const actionLabels = {
+          'create': 'Created',
+          'update': 'Updated',
+          'delete': 'Deleted',
+          'publish': 'Published',
+          'unpublish': 'Unpublished',
+          'rollback': 'Rollback',
+          'version_create': 'Snapshot',
+          'version_delete': 'Version Deleted',
+          'version_tag': 'Tagged',
+          'version_untag': 'Untagged',
+          'domain_add': 'Domain Added',
+          'domain_remove': 'Domain Removed',
+          'domain_publish': 'Domain Published',
+          'domain_unpublish': 'Domain Unpublished',
+          'move': 'Moved'
+        };
+        return actionLabels[action] || action;
+      },
+      
+      getAuditActionClass(action) {
+        const classes = {
+          'create': 'bg-green-100 text-green-700',
+          'update': 'bg-blue-100 text-blue-700',
+          'delete': 'bg-red-100 text-red-700',
+          'publish': 'bg-emerald-100 text-emerald-700',
+          'unpublish': 'bg-orange-100 text-orange-700',
+          'rollback': 'bg-amber-100 text-amber-700',
+          'version_create': 'bg-purple-100 text-purple-700',
+          'version_delete': 'bg-red-100 text-red-700',
+          'version_tag': 'bg-teal-100 text-teal-700',
+          'version_untag': 'bg-gray-100 text-gray-700',
+          'domain_add': 'bg-cyan-100 text-cyan-700',
+          'domain_remove': 'bg-rose-100 text-rose-700',
+          'domain_publish': 'bg-emerald-100 text-emerald-700',
+          'domain_unpublish': 'bg-orange-100 text-orange-700',
+          'move': 'bg-indigo-100 text-indigo-700'
+        };
+        return classes[action] || 'bg-gray-100 text-gray-700';
       },
       
       // Editors
