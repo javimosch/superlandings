@@ -1,0 +1,85 @@
+<!-- Audit Log Modal -->
+<div v-if="showAuditModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+  <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+    <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
+      <div>
+        <h3 class="text-xl font-semibold text-gray-900">Audit Log</h3>
+        <p class="text-sm text-gray-500 mt-1">{{ auditLanding?.name }}</p>
+      </div>
+      <button @click="closeAuditModal" class="text-gray-500 hover:text-gray-700">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="p-6 flex-1 overflow-y-auto">
+      <!-- Loading state -->
+      <div v-if="loading.audit" class="text-center py-12 text-gray-500">
+        <p class="text-lg">Loading audit log...</p>
+      </div>
+
+      <!-- Empty state -->
+      <div v-else-if="auditEntries.length === 0" class="text-center py-12 text-gray-500">
+        <p class="text-lg">No audit entries yet</p>
+        <p class="text-sm mt-2">Actions performed on this landing will appear here</p>
+      </div>
+
+      <!-- Audit entries list -->
+      <div v-else class="space-y-3">
+        <div v-for="entry in auditEntries" :key="entry.id" 
+             class="border rounded-lg p-4 hover:bg-gray-50 transition">
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2 flex-wrap">
+                <!-- Action badge -->
+                <span :class="getAuditActionClass(entry.action)" class="px-2 py-0.5 rounded text-xs font-bold uppercase">
+                  {{ formatAuditAction(entry.action) }}
+                </span>
+                <!-- Admin badge -->
+                <span v-if="entry.isAdmin" class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                  Admin
+                </span>
+              </div>
+              
+              <!-- Details -->
+              <div v-if="entry.details" class="text-sm text-gray-700 mb-2">
+                {{ entry.details }}
+              </div>
+              
+              <!-- Metadata -->
+              <div class="text-sm text-gray-500 flex items-center gap-4 flex-wrap">
+                <span class="flex items-center gap-1">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
+                  {{ entry.actor }}
+                </span>
+                <span class="flex items-center gap-1">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  {{ formatAuditDate(entry.timestamp) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Load more button -->
+        <div v-if="auditHasMore" class="text-center pt-4">
+          <button @click="loadMoreAudit" :disabled="loading.auditMore" 
+                  class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 disabled:opacity-50">
+            <span v-if="loading.auditMore">Loading...</span>
+            <span v-else>Load More</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer with total count -->
+    <div v-if="auditTotal > 0" class="px-6 py-3 bg-gray-50 border-t text-sm text-gray-500">
+      Showing {{ auditEntries.length }} of {{ auditTotal }} entries
+    </div>
+  </div>
+</div>
