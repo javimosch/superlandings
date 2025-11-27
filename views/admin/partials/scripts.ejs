@@ -50,6 +50,15 @@
         movingLanding: null,
         moveTargetOrgId: '',
         
+        // Versions Modal
+        showVersionsModal: false,
+        versionLanding: null,
+        versions: [],
+        newVersionDescription: '',
+        showVersionPreviewModal: false,
+        previewingVersion: null,
+        versionPreviewContent: '',
+        
         // UI State
         loading: {},
         toasts: [],
@@ -689,14 +698,115 @@
       // Logout
       async logout() {
         try {
-          // Call logout endpoint which returns 401 to clear browser credentials
           await fetch('/api/logout');
         } catch (err) {
           console.log('Logout request completed');
         }
-        
-        // Redirect to login page
         window.location.href = '/login';
+      },
+      
+      // Versions
+      async openVersionsModal(landing) {
+        this.versionLanding = landing;
+        this.versions = [];
+        this.newVersionDescription = '';
+        this.showVersionsModal = true;
+        await this.loadVersions();
+      },
+      
+      closeVersionsModal() {
+        this.showVersionsModal = false;
+        this.versionLanding = null;
+        this.versions = [];
+      },
+      
+      async loadVersions() {
+        if (!this.versionLanding) return;
+        try {
+          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions`);
+          this.versions = await res.json();
+        } catch (err) {
+          this.showError('Error loading versions: ' + err.message);
+        }
+      },
+      
+      async createSnapshot() {
+        this.loading.createVersion = true;
+        try {
+          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: this.newVersionDescription || 'Manual snapshot' })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess('Snapshot created!');
+          this.newVersionDescription = '';
+          await this.loadVersions();
+        } catch (err) {
+          this.showError('Error creating snapshot: ' + err.message);
+        } finally {
+          this.loading.createVersion = false;
+        }
+      },
+      
+      async previewVersion(version) {
+        try {
+          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions/${version.id}/preview`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.previewingVersion = version;
+          this.versionPreviewContent = data.content;
+          this.showVersionPreviewModal = true;
+        } catch (err) {
+          this.showError('Error loading preview: ' + err.message);
+        }
+      },
+      
+      async rollbackToVersion(version) {
+        const loadingKey = 'rollback-' + version.id;
+        this.loading[loadingKey] = true;
+        try {
+          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions/${version.id}/rollback`, { method: 'POST' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess(data.message);
+          await this.loadVersions();
+          await this.loadLandings();
+        } catch (err) {
+          this.showError('Error rolling back: ' + err.message);
+        } finally {
+          this.loading[loadingKey] = false;
+        }
+      },
+      
+      async deleteVersionItem(version) {
+        const loadingKey = 'delete-' + version.id;
+        this.loading[loadingKey] = true;
+        try {
+          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions/${version.id}`, { method: 'DELETE' });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.showSuccess('Version deleted!');
+          await this.loadVersions();
+        } catch (err) {
+          this.showError('Error deleting version: ' + err.message);
+        } finally {
+          this.loading[loadingKey] = false;
+        }
+      },
+      
+      formatVersionDate(dateStr) {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleString();
+      },
+      
+      formatBytes(bytes) {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
       },
       
       // Editors
