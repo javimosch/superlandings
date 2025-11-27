@@ -59,6 +59,21 @@
         previewingVersion: null,
         versionPreviewContent: '',
         
+        // Confirmation dialogs
+        showRollbackConfirm: false,
+        showDeleteConfirm: false,
+        confirmingVersion: null,
+        
+        // Diff Modal
+        showDiffModal: false,
+        diffData: null,
+        collapsedFiles: {},
+        
+        // HTML View Modal
+        showVersionHtmlModal: false,
+        viewingHtmlVersion: null,
+        versionHtmlContent: '',
+        
         // UI State
         loading: {},
         toasts: [],
@@ -77,6 +92,10 @@
       },
       canDomains() {
         return this.authInfo.isAdmin || this.authInfo.rights.includes('landings:domains');
+      },
+      allFilesCollapsed() {
+        if (!this.diffData?.diffs) return false;
+        return this.diffData.diffs.every((_, idx) => this.collapsedFiles[idx]);
       }
     },
     async mounted() {
@@ -763,11 +782,46 @@
         }
       },
       
-      async rollbackToVersion(version) {
-        const loadingKey = 'rollback-' + version.id;
+      async viewVersionHtml(version) {
+        const loadingKey = 'html-' + version.id;
         this.loading[loadingKey] = true;
         try {
-          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions/${version.id}/rollback`, { method: 'POST' });
+          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions/${version.id}/preview`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          this.viewingHtmlVersion = version;
+          this.versionHtmlContent = data.content;
+          this.showVersionHtmlModal = true;
+        } catch (err) {
+          this.showError('Error loading HTML: ' + err.message);
+        } finally {
+          this.loading[loadingKey] = false;
+        }
+      },
+      
+      async copyVersionHtml() {
+        try {
+          await navigator.clipboard.writeText(this.versionHtmlContent);
+          this.showSuccess('HTML copied to clipboard!');
+        } catch (err) {
+          this.showError('Failed to copy: ' + err.message);
+        }
+      },
+      
+      async rollbackToVersion(version) {
+        this.confirmingVersion = version;
+        this.showRollbackConfirm = true;
+      },
+      
+      async confirmRollback() {
+        if (!this.confirmingVersion) return;
+        
+        const loadingKey = 'rollback-' + this.confirmingVersion.id;
+        this.loading[loadingKey] = true;
+        this.showRollbackConfirm = false;
+        
+        try {
+          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions/${this.confirmingVersion.id}/rollback`, { method: 'POST' });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
           this.showSuccess(data.message);
@@ -777,14 +831,24 @@
           this.showError('Error rolling back: ' + err.message);
         } finally {
           this.loading[loadingKey] = false;
+          this.confirmingVersion = null;
         }
       },
       
       async deleteVersionItem(version) {
-        const loadingKey = 'delete-' + version.id;
+        this.confirmingVersion = version;
+        this.showDeleteConfirm = true;
+      },
+      
+      async confirmDelete() {
+        if (!this.confirmingVersion) return;
+        
+        const loadingKey = 'delete-' + this.confirmingVersion.id;
         this.loading[loadingKey] = true;
+        this.showDeleteConfirm = false;
+        
         try {
-          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions/${version.id}`, { method: 'DELETE' });
+          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions/${this.confirmingVersion.id}`, { method: 'DELETE' });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
           this.showSuccess('Version deleted!');
@@ -793,6 +857,7 @@
           this.showError('Error deleting version: ' + err.message);
         } finally {
           this.loading[loadingKey] = false;
+          this.confirmingVersion = null;
         }
       },
       
@@ -809,6 +874,90 @@
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
       },
       
+      // Diff
+      async openDiffModal(version) {
+        const loadingKey = 'diff-' + version.id;
+        this.loading[loadingKey] = true;
+        this.loading.diff = true;
+        try {
+          const res = await fetch(`/api/landings/${this.versionLanding.id}/versions/${version.id}/diff`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+          
+          this.diffData = data;
+          // Collapse files with many changes by default (>50 lines)
+          this.collapsedFiles = {};
+          if (data.diffs) {
+            data.diffs.forEach((diff, idx) => {
+              const totalChanges = this.countChangesNum(diff);
+              if (totalChanges > 50) {
+                this.collapsedFiles[idx] = true;
+              }
+            });
+          }
+          this.showDiffModal = true;
+        } catch (err) {
+          this.showError('Error loading diff: ' + err.message);
+        } finally {
+          this.loading[loadingKey] = false;
+          this.loading.diff = false;
+        }
+      },
+      
+      closeDiffModal() {
+        this.showDiffModal = false;
+        this.diffData = null;
+        this.collapsedFiles = {};
+      },
+      
+      toggleFileDiff(fileIdx) {
+        this.collapsedFiles[fileIdx] = !this.collapsedFiles[fileIdx];
+      },
+      
+      toggleAllFiles() {
+        const allCollapsed = this.allFilesCollapsed;
+        if (this.diffData?.diffs) {
+          this.diffData.diffs.forEach((_, idx) => {
+            this.collapsedFiles[idx] = !allCollapsed;
+          });
+        }
+      },
+      
+      countChanges(fileDiff) {
+        if (fileDiff.type === 'added') {
+          const lines = fileDiff.hunks.reduce((sum, h) => sum + (h.newLines?.length || 0), 0);
+          return `+${lines} lines`;
+        }
+        if (fileDiff.type === 'deleted') {
+          const lines = fileDiff.hunks.reduce((sum, h) => sum + (h.oldLines?.length || 0), 0);
+          return `-${lines} lines`;
+        }
+        let added = 0, removed = 0;
+        fileDiff.hunks.forEach(h => {
+          h.changes?.forEach(c => {
+            if (c.type === 'add') added++;
+            if (c.type === 'remove') removed++;
+          });
+        });
+        return `+${added} -${removed}`;
+      },
+      
+      countChangesNum(fileDiff) {
+        if (fileDiff.type === 'added') {
+          return fileDiff.hunks.reduce((sum, h) => sum + (h.newLines?.length || 0), 0);
+        }
+        if (fileDiff.type === 'deleted') {
+          return fileDiff.hunks.reduce((sum, h) => sum + (h.oldLines?.length || 0), 0);
+        }
+        let total = 0;
+        fileDiff.hunks.forEach(h => {
+          h.changes?.forEach(c => {
+            if (c.type === 'add' || c.type === 'remove') total++;
+          });
+        });
+        return total;
+      },
+      
       // Editors
       initAddEditor() {
         if (this.$refs.addEditorContainer && !this.addEditor) {
@@ -823,8 +972,20 @@
           const textarea = document.createElement('textarea');
           textarea.value = this.editingLanding.content;
           this.$refs.editEditorContainer.appendChild(textarea);
-          this.editEditor = CodeMirror.fromTextArea(textarea, { mode: 'htmlmixed', lineNumbers: true, theme: 'default', lineWrapping: true });
-          this.editEditor.setSize('100%', '400px');
+          this.editEditor = CodeMirror.fromTextArea(textarea, { 
+            mode: 'htmlmixed', 
+            lineNumbers: true, 
+            theme: 'default', 
+            lineWrapping: true,
+            extraKeys: {
+              "Ctrl-F": "findPersistent",
+              "F3": "findNext",
+              "Ctrl-G": "findNext",
+              "Shift-Ctrl-G": "findPrev",
+              "Shift-F3": "findPrev"
+            }
+          });
+          this.editEditor.setSize('100%', '100%');
         }
       }
     },

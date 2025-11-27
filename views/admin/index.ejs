@@ -12,8 +12,15 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/search.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/search/searchcursor.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/dialog/dialog.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/dialog/dialog.min.css">
   <style>
-    .CodeMirror { height: 400px; border: 1px solid #ddd; border-radius: 4px; }
+    .CodeMirror { height: 100%; border: 1px solid #ddd; border-radius: 4px; }
+    .CodeMirror-dialog { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1000; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    .CodeMirror-dialog-top { border-radius: 8px 8px 0 0; }
+    .CodeMirror-dialog-bottom { border-radius: 0 0 8px 8px; }
     /* Toast animations */
     .toast-enter { animation: slideIn 0.3s ease-out; }
     .toast-leave { animation: slideOut 0.3s ease-in; }
@@ -33,6 +40,7 @@
     <%- include('partials/modals/organizations') %>
     <%- include('partials/modals/move-landing') %>
     <%- include('partials/modals/versions') %>
+    <%- include('partials/modals/diff') %>
   </div>
   <%- include('partials/scripts') %>
 </body>

@@ -1,0 +1,126 @@
+<!-- Diff Full Screen Modal -->
+<div v-if="showDiffModal" class="fixed inset-0 bg-gray-900 z-50 flex flex-col">
+  <!-- Header -->
+  <div class="bg-gray-800 text-white px-6 py-4 flex justify-between items-center border-b border-gray-700">
+    <div>
+      <h2 class="text-xl font-semibold">Version Diff</h2>
+      <p class="text-sm text-gray-400 mt-1">
+        Version {{ diffData?.version?.versionNumber }} 
+        <span class="text-gray-500">vs</span> 
+        {{ diffData?.compareLabel }}
+      </p>
+    </div>
+    <div class="flex items-center gap-4">
+      <span v-if="diffData?.diffs?.length === 0" class="text-green-400">No changes</span>
+      <span v-else class="text-gray-400">{{ diffData?.diffs?.length }} file(s) changed</span>
+    </div>
+  </div>
+
+  <!-- Diff Content -->
+  <div class="flex-1 overflow-y-auto p-6 bg-gray-900">
+    <div v-if="loading.diff" class="text-center py-12 text-gray-400">
+      Loading diff...
+    </div>
+
+    <div v-else-if="diffData?.diffs?.length === 0" class="text-center py-12 text-gray-500">
+      <p class="text-lg">No differences found</p>
+      <p class="text-sm mt-2">This version is identical to the previous one</p>
+    </div>
+
+    <div v-else class="space-y-6 max-w-6xl mx-auto">
+      <!-- File Diff Block -->
+      <div v-for="(fileDiff, fileIdx) in diffData?.diffs" :key="fileDiff.filename" 
+           class="bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
+        
+        <!-- File Header -->
+        <div class="px-4 py-3 bg-gray-750 border-b border-gray-700 flex justify-between items-center cursor-pointer hover:bg-gray-700"
+             @click="toggleFileDiff(fileIdx)">
+          <div class="flex items-center gap-3">
+            <span v-if="fileDiff.type === 'added'" class="px-2 py-0.5 bg-green-600 text-white text-xs rounded font-medium">ADDED</span>
+            <span v-else-if="fileDiff.type === 'deleted'" class="px-2 py-0.5 bg-red-600 text-white text-xs rounded font-medium">DELETED</span>
+            <span v-else class="px-2 py-0.5 bg-yellow-600 text-white text-xs rounded font-medium">MODIFIED</span>
+            <span class="text-gray-200 font-mono text-sm">{{ fileDiff.filename }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-500">{{ countChanges(fileDiff) }}</span>
+            <svg :class="{ 'rotate-180': !collapsedFiles[fileIdx] }" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </div>
+        </div>
+
+        <!-- File Content (Collapsible) -->
+        <div v-show="!collapsedFiles[fileIdx]" class="overflow-x-auto">
+          <div v-for="(hunk, hunkIdx) in fileDiff.hunks" :key="hunkIdx" class="border-b border-gray-700 last:border-b-0">
+            <!-- Hunk Header -->
+            <div v-if="fileDiff.type === 'modified'" class="px-4 py-2 bg-gray-750 text-gray-500 text-xs font-mono">
+              @@ -{{ hunk.oldStart }} +{{ hunk.newStart }} @@
+            </div>
+            
+            <!-- Changes -->
+            <div class="font-mono text-sm">
+              <template v-if="fileDiff.type === 'added'">
+                <div v-for="(line, lineIdx) in hunk.newLines" :key="lineIdx" 
+                     class="flex bg-green-900/30 border-l-4 border-green-500">
+                  <span class="w-12 text-right pr-2 text-green-600 select-none flex-shrink-0">+{{ lineIdx + 1 }}</span>
+                  <pre class="flex-1 text-green-300 whitespace-pre-wrap break-all px-2 py-0.5">{{ line }}</pre>
+                </div>
+              </template>
+              
+              <template v-else-if="fileDiff.type === 'deleted'">
+                <div v-for="(line, lineIdx) in hunk.oldLines" :key="lineIdx" 
+                     class="flex bg-red-900/30 border-l-4 border-red-500">
+                  <span class="w-12 text-right pr-2 text-red-600 select-none flex-shrink-0">-{{ lineIdx + 1 }}</span>
+                  <pre class="flex-1 text-red-300 whitespace-pre-wrap break-all px-2 py-0.5">{{ line }}</pre>
+                </div>
+              </template>
+              
+              <template v-else>
+                <div v-for="(change, changeIdx) in hunk.changes" :key="changeIdx"
+                     :class="{
+                       'bg-red-900/30 border-l-4 border-red-500': change.type === 'remove',
+                       'bg-green-900/30 border-l-4 border-green-500': change.type === 'add',
+                       'bg-gray-800 border-l-4 border-gray-600': change.type === 'context'
+                     }"
+                     class="flex">
+                  <span class="w-12 text-right pr-2 select-none flex-shrink-0"
+                        :class="{
+                          'text-red-600': change.type === 'remove',
+                          'text-green-600': change.type === 'add',
+                          'text-gray-600': change.type === 'context'
+                        }">
+                    {{ change.type === 'remove' ? '-' : change.type === 'add' ? '+' : ' ' }}{{ change.lineNumber }}
+                  </span>
+                  <pre class="flex-1 whitespace-pre-wrap break-all px-2 py-0.5"
+                       :class="{
+                         'text-red-300': change.type === 'remove',
+                         'text-green-300': change.type === 'add',
+                         'text-gray-400': change.type === 'context'
+                       }">{{ change.line }}</pre>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="bg-gray-800 px-6 py-4 border-t border-gray-700 flex justify-between items-center">
+    <div class="text-sm text-gray-500">
+      <span v-if="diffData?.version">
+        {{ formatVersionDate(diffData.version.createdAt) }}
+        <span v-if="diffData.version.description" class="ml-2 text-gray-400">- {{ diffData.version.description }}</span>
+      </span>
+    </div>
+    <div class="flex gap-3">
+      <button @click="toggleAllFiles" class="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition text-sm">
+        {{ allFilesCollapsed ? 'Expand All' : 'Collapse All' }}
+      </button>
+      <button @click="closeDiffModal" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
