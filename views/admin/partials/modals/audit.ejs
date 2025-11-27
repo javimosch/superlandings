@@ -65,14 +65,10 @@
 
               <!-- Linked Versions -->
               <div v-if="entry.versionIds && entry.versionIds.length > 0" class="mt-2 pt-2 border-t border-gray-200">
-                <div class="text-xs text-gray-600 font-medium mb-1">📜 Linked Versions:</div>
-                <div class="flex gap-1 flex-wrap">
-                  <button v-for="(versionId, idx) in entry.versionIds" :key="versionId"
-                          @click="viewLinkedVersion(versionId)"
-                          class="px-2 py-1 text-xs rounded hover:opacity-80 transition"
-                          :class="idx === 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'">
-                    {{ idx === 0 ? '📋 Before' : '✨ After' }}
-                  </button>
+                <div class="text-xs text-gray-600 font-medium mb-1">📜 Version:</div>
+                <div class="text-xs text-gray-500">
+                  Version #{{ getVersionNumber(entry.versionIds[0]) }} 
+                  <span v-if="entry.metadata?.versionNumber" class="text-gray-400">(v{{ entry.metadata.versionNumber }})</span>
                 </div>
               </div>
             </div>
