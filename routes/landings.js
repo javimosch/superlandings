@@ -5,13 +5,16 @@ const AdmZip = require('adm-zip');
 const { readDB, writeDB, LANDINGS_DIR, migrateDomains } = require('../lib/db');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
 const { hasRight } = require('../lib/auth');
+const { createVersion, deleteAllVersions } = require('../lib/versions');
 const landingDomainsRouter = require('./landing-domains');
 const landingPublishRouter = require('./landing-publish');
+const landingVersionsRouter = require('./landing-versions');
 
 const router = express.Router();
 
 // Mount sub-routers
 router.use('/:id/domains', landingDomainsRouter);
+router.use('/:id/versions', landingVersionsRouter);
 router.use('/:id', landingPublishRouter);
 
 // Get all landings (filtered by organization for non-admin users)
@@ -142,9 +145,15 @@ router.put('/:id', (req, res) => {
     const landingDir = path.join(LANDINGS_DIR, landing.slug);
 
     if (landing.type === 'html') {
+      // Create version before update
+      createVersion(landing, 'Before edit');
+      
       fs.writeFileSync(path.join(landingDir, 'index.html'), content);
       res.json({ success: true });
     } else if (landing.type === 'ejs' && req.files && req.files.length > 0) {
+      // Create version before update
+      createVersion(landing, 'Before edit');
+      
       // Clear all existing files in the landing directory first
       const files = fs.readdirSync(landingDir);
       for (const file of files) {
@@ -279,6 +288,10 @@ router.delete('/:id', async (req, res) => {
       fs.rmSync(landingDir, { recursive: true, force: true });
       console.log(`✅ Landing directory removed`);
     }
+
+    // Delete all versions for this landing
+    deleteAllVersions(landing.id);
+    console.log(`✅ Landing versions removed`);
 
     db.landings.splice(landingIndex, 1);
     writeDB(db);
