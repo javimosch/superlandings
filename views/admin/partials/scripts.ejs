@@ -6,7 +6,9 @@
     ...(window.AppModules?.landings ? window.AppModules.landings(window.AppServices || {}, window.AppHelpers || {}) : {}),
     ...(window.AppModules?.domains ? window.AppModules.domains(window.AppServices || {}) : {}),
     ...(window.AppModules?.versions ? window.AppModules.versions(window.AppServices || {}) : {}),
-    ...(window.AppModules?.audit ? window.AppModules.audit(window.AppServices || {}) : {})
+    ...(window.AppModules?.audit ? window.AppModules.audit(window.AppServices || {}) : {}),
+    ...(window.AppModules?.organizations ? window.AppModules.organizations(window.AppServices || {}, window.AppHelpers || {}) : {}),
+    ...(window.AppModules?.cloudflare ? window.AppModules.cloudflare(window.AppServices || {}, window.AppHelpers || {}) : {})
   };
 
   createApp({
@@ -191,37 +193,12 @@
         }
       },
 
-      async loadCloudflareStatus() {
-        try {
-          const res = await fetch('/api/cloudflare/status', { headers: this.getHeaders() });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Failed to load Cloudflare status');
-          this.cloudflareStatus = data;
-        } catch (err) {
-          this.cloudflareStatus = { enabled: false, connected: false, connectedAt: null, email: null };
-        }
-      },
-      
       getHeaders() {
         const headers = {};
         if (this.currentOrganization) {
           headers['X-Organization-Id'] = this.currentOrganization.id;
         }
         return headers;
-      },
-      
-      // Organizations
-      async loadOrganizations() {
-        try {
-          const res = await fetch('/api/organizations');
-          const orgs = await res.json();
-          this.organizations = orgs;
-          if (this.authInfo.isAdmin) {
-            this.allOrganizations = orgs;
-          }
-        } catch (err) {
-          this.showError('Error loading organizations: ' + err.message);
-        }
       },
       
       initCurrentOrganization() {
@@ -493,194 +470,7 @@
         }
       },
       
-      // Move Landing
-      openMoveModal(landing) {
-        this.movingLanding = landing;
-        this.moveTargetOrgId = '';
-        this.showMoveModal = true;
-      },
-      
-      async moveLanding() {
-        this.loading.move = true;
-        try {
-          const res = await fetch('/api/migration/move-landing', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ landingId: this.movingLanding.id, targetOrganizationId: this.moveTargetOrgId })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess(data.message);
-          this.showMoveModal = false;
-          this.loadLandings();
-        } catch (err) {
-          this.showError('Error moving landing: ' + err.message);
-        } finally {
-          this.loading.move = false;
-        }
-      },
-      
-      // Organizations Management (Admin)
-      async createOrganization() {
-        try {
-          const res = await fetch('/api/organizations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: this.newOrgName })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess('Organization created!');
-          this.newOrgName = '';
-          await this.loadOrganizations();
-        } catch (err) {
-          this.showError('Error creating organization: ' + err.message);
-        }
-      },
-      
-      async saveOrganization() {
-        try {
-          const res = await fetch(`/api/organizations/${this.editingOrg.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: this.editingOrg.name })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess('Organization updated!');
-          this.editingOrg = null;
-          await this.loadOrganizations();
-        } catch (err) {
-          this.showError('Error updating organization: ' + err.message);
-        }
-      },
-      
-      async deleteOrganization(id) {
-        try {
-          const res = await fetch(`/api/organizations/${id}`, { method: 'DELETE' });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess('Organization deleted!');
-          await this.loadOrganizations();
-        } catch (err) {
-          this.showError('Error deleting organization: ' + err.message);
-        }
-      },
-      
-      // Users Management (Admin)
-      async loadAllUsers() {
-        try {
-          const res = await fetch('/api/users');
-          this.allUsers = await res.json();
-        } catch (err) {
-          console.error('Error loading users:', err);
-        }
-      },
-      
-      async loadAvailableRights() {
-        try {
-          const res = await fetch('/api/users/rights');
-          this.availableRights = await res.json();
-        } catch (err) {
-          console.error('Error loading rights:', err);
-        }
-      },
-      
-      async createUser() {
-        try {
-          const res = await fetch('/api/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: this.newUserEmail, password: this.newUserPassword })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess('User created!');
-          this.newUserEmail = '';
-          this.newUserPassword = '';
-          await this.loadAllUsers();
-        } catch (err) {
-          this.showError('Error creating user: ' + err.message);
-        }
-      },
-      
-      async deleteUser(email) {
-        try {
-          const res = await fetch(`/api/users/${encodeURIComponent(email)}`, { method: 'DELETE' });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess('User deleted!');
-          await this.loadAllUsers();
-          await this.loadOrganizations();
-        } catch (err) {
-          this.showError('Error deleting user: ' + err.message);
-        }
-      },
-      
-      availableUsersForOrg(org) {
-        const orgUserEmails = org.users?.map(u => u.email) || [];
-        return this.allUsers.filter(u => !orgUserEmails.includes(u.email));
-      },
-      
-      async addUserToOrganization(orgId) {
-        try {
-          const res = await fetch(`/api/organizations/${orgId}/users`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: this.addUserEmail, rights: [] })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess('User added to organization!');
-          this.showAddUserToOrg = null;
-          this.addUserEmail = '';
-          await this.loadOrganizations();
-        } catch (err) {
-          this.showError('Error adding user: ' + err.message);
-        }
-      },
-      
-      async removeUserFromOrganization(orgId, email) {
-        try {
-          const res = await fetch(`/api/organizations/${orgId}/users/${encodeURIComponent(email)}`, { method: 'DELETE' });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess('User removed from organization!');
-          await this.loadOrganizations();
-        } catch (err) {
-          this.showError('Error removing user: ' + err.message);
-        }
-      },
-      
-      openUserRightsModal(org, user) {
-        this.editingUserRights = {
-          orgId: org.id,
-          orgName: org.name,
-          email: user.email,
-          rights: [...(user.rights || [])]
-        };
-        this.showUserRightsModal = true;
-      },
-      
-      selectAllRights() { this.editingUserRights.rights = [...this.availableRights]; },
-      selectNoRights() { this.editingUserRights.rights = []; },
-      
-      async saveUserRights() {
-        try {
-          const res = await fetch(`/api/organizations/${this.editingUserRights.orgId}/users/${encodeURIComponent(this.editingUserRights.email)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rights: this.editingUserRights.rights })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess('Rights updated!');
-          this.showUserRightsModal = false;
-          await this.loadOrganizations();
-        } catch (err) {
-          this.showError('Error updating rights: ' + err.message);
-        }
-      },
+      // Organizations and users moved to module mixin
       
       // File handling
       handleEjsFilesChange(event) {
