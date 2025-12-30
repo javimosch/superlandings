@@ -17,7 +17,7 @@ const {
 const router = express.Router({ mergeParams: true });
 
 // Get all versions for a landing
-router.get('/:id', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { id } = req.params;
     const db = await readDB();
@@ -36,7 +36,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a manual version snapshot
-router.post('/:id', async (req, res) => {
+router.post('/', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -74,7 +74,7 @@ router.post('/:id', async (req, res) => {
 });
 
 // Get a specific version
-router.get('/:id/:versionId', async (req, res) => {
+router.get('/:versionId', async (req, res) => {
   try {
     const { id, versionId } = req.params;
     
@@ -91,7 +91,7 @@ router.get('/:id/:versionId', async (req, res) => {
 });
 
 // Get version content preview (HTML only)
-router.get('/:id/:versionId/preview', async (req, res) => {
+router.get('/:versionId/preview', async (req, res) => {
   try {
     const { id, versionId } = req.params;
     
@@ -108,7 +108,7 @@ router.get('/:id/:versionId/preview', async (req, res) => {
 });
 
 // Rollback to a specific version
-router.post('/:id/:versionId/rollback', async (req, res) => {
+router.post('/:versionId/rollback', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -152,7 +152,7 @@ router.post('/:id/:versionId/rollback', async (req, res) => {
 });
 
 // Get diff between a version and the previous version (or current state)
-router.get('/:id/:versionId/diff', async (req, res) => {
+router.get('/:versionId/diff', async (req, res) => {
   try {
     const { id, versionId } = req.params;
     const { compareTo } = req.query; // 'previous' or 'current'
@@ -367,7 +367,7 @@ function computeLCS(oldLines, newLines) {
 }
 
 // Delete a specific version
-router.delete('/:id/:versionId', async (req, res) => {
+router.delete('/:versionId', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -398,7 +398,7 @@ router.delete('/:id/:versionId', async (req, res) => {
 });
 
 // Update version metadata (description and tag)
-router.patch('/:id/:versionId', async (req, res) => {
+async function updateVersionMetadataHandler(req, res) {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -423,11 +423,14 @@ router.patch('/:id/:versionId', async (req, res) => {
       });
     }
     
-    res.json({ success: true, version: updatedVersion });
+    res.json(updatedVersion);
   } catch (error) {
     console.error('Error updating version metadata:', error);
     res.status(500).json({ error: error.message });
   }
-});
+}
+
+router.patch('/:versionId', updateVersionMetadataHandler);
+router.put('/:versionId', updateVersionMetadataHandler);
 
 module.exports = router;
