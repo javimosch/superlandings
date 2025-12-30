@@ -1,16 +1,16 @@
 const express = require('express');
-const { readDB, writeDB } = require('../lib/db');
+const { readDB, writeDB } = require('../lib/store');
 const { hashPassword, AVAILABLE_RIGHTS } = require('../lib/auth');
 
 const router = express.Router();
 
 // Get all users (admin only)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
   
-  const db = readDB();
+  const db = await readDB();
   const users = (db.users || []).map(u => ({
     ...u,
     password: undefined // Never expose password
@@ -24,13 +24,13 @@ router.get('/rights', (req, res) => {
 });
 
 // Get single user (admin only)
-router.get('/:email', (req, res) => {
+router.get('/:email', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
   const { email } = req.params;
-  const db = readDB();
+  const db = await readDB();
   const users = db.users || [];
   const user = users.find(u => u.email === email);
   
@@ -42,7 +42,7 @@ router.get('/:email', (req, res) => {
 });
 
 // Create user (admin only)
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -58,7 +58,7 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 3 characters' });
     }
 
-    const db = readDB();
+    const db = await readDB();
     if (!db.users) db.users = [];
 
     // Check if email exists
@@ -73,7 +73,7 @@ router.post('/', (req, res) => {
     };
 
     db.users.push(user);
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ User created: ${user.email}`);
     res.json({ ...user, password: undefined });
@@ -84,7 +84,7 @@ router.post('/', (req, res) => {
 });
 
 // Update user (admin only)
-router.put('/:email', (req, res) => {
+router.put('/:email', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -93,7 +93,7 @@ router.put('/:email', (req, res) => {
     const { email } = req.params;
     const { newEmail, password } = req.body;
 
-    const db = readDB();
+    const db = await readDB();
     const users = db.users || [];
     const user = users.find(u => u.email === email);
     
@@ -125,7 +125,7 @@ router.put('/:email', (req, res) => {
       user.password = hashPassword(password);
     }
 
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ User updated: ${user.email}`);
     res.json({ ...user, password: undefined });
@@ -136,14 +136,14 @@ router.put('/:email', (req, res) => {
 });
 
 // Delete user (admin only)
-router.delete('/:email', (req, res) => {
+router.delete('/:email', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
   try {
     const { email } = req.params;
-    const db = readDB();
+    const db = await readDB();
     
     const users = db.users || [];
     const index = users.findIndex(u => u.email === email);
@@ -161,7 +161,7 @@ router.delete('/:email', (req, res) => {
     });
 
     users.splice(index, 1);
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ User deleted: ${email}`);
     res.json({ success: true });

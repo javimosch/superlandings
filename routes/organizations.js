@@ -1,23 +1,23 @@
 const express = require('express');
-const { readDB, writeDB } = require('../lib/db');
+const { readDB, writeDB } = require('../lib/store');
 
 const router = express.Router();
 
 // Get all organizations (admin only)
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   if (!req.adminAuth) {
     // Return only user's organizations
     return res.json(req.userOrganizations || []);
   }
   
-  const db = readDB();
+  const db = await readDB();
   res.json(db.organizations || []);
 });
 
 // Get single organization
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const { id } = req.params;
-  const db = readDB();
+  const db = await readDB();
   const orgs = db.organizations || [];
   const org = orgs.find(o => o.id === id);
   
@@ -37,7 +37,7 @@ router.get('/:id', (req, res) => {
 });
 
 // Create organization (admin only)
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -49,7 +49,7 @@ router.post('/', (req, res) => {
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    const db = readDB();
+    const db = await readDB();
     if (!db.organizations) db.organizations = [];
 
     const org = {
@@ -60,7 +60,7 @@ router.post('/', (req, res) => {
     };
 
     db.organizations.push(org);
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ Organization created: ${org.name}`);
     res.json(org);
@@ -71,7 +71,7 @@ router.post('/', (req, res) => {
 });
 
 // Update organization (admin only)
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -84,7 +84,7 @@ router.put('/:id', (req, res) => {
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    const db = readDB();
+    const db = await readDB();
     const orgs = db.organizations || [];
     const org = orgs.find(o => o.id === id);
     
@@ -93,7 +93,7 @@ router.put('/:id', (req, res) => {
     }
 
     org.name = name.trim();
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ Organization updated: ${org.name}`);
     res.json(org);
@@ -104,14 +104,14 @@ router.put('/:id', (req, res) => {
 });
 
 // Delete organization (admin only)
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
   try {
     const { id } = req.params;
-    const db = readDB();
+    const db = await readDB();
     
     // Check if organization has landings
     const landings = db.landings || [];
@@ -131,7 +131,7 @@ router.delete('/:id', (req, res) => {
     }
 
     const deleted = orgs.splice(index, 1)[0];
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ Organization deleted: ${deleted.name}`);
     res.json({ success: true });
@@ -142,7 +142,7 @@ router.delete('/:id', (req, res) => {
 });
 
 // Add user to organization (admin only)
-router.post('/:id/users', (req, res) => {
+router.post('/:id/users', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -155,7 +155,7 @@ router.post('/:id/users', (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    const db = readDB();
+    const db = await readDB();
     const orgs = db.organizations || [];
     const org = orgs.find(o => o.id === id);
     
@@ -182,7 +182,7 @@ router.post('/:id/users', (req, res) => {
       rights: rights || []
     });
 
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ User ${email} added to organization ${org.name}`);
     res.json(org);
@@ -193,7 +193,7 @@ router.post('/:id/users', (req, res) => {
 });
 
 // Update user rights in organization (admin only)
-router.put('/:id/users/:email', (req, res) => {
+router.put('/:id/users/:email', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -202,7 +202,7 @@ router.put('/:id/users/:email', (req, res) => {
     const { id, email } = req.params;
     const { rights } = req.body;
 
-    const db = readDB();
+    const db = await readDB();
     const orgs = db.organizations || [];
     const org = orgs.find(o => o.id === id);
     
@@ -216,7 +216,7 @@ router.put('/:id/users/:email', (req, res) => {
     }
 
     userInOrg.rights = rights || [];
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ User ${email} rights updated in organization ${org.name}`);
     res.json(org);
@@ -227,7 +227,7 @@ router.put('/:id/users/:email', (req, res) => {
 });
 
 // Remove user from organization (admin only)
-router.delete('/:id/users/:email', (req, res) => {
+router.delete('/:id/users/:email', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -235,7 +235,7 @@ router.delete('/:id/users/:email', (req, res) => {
   try {
     const { id, email } = req.params;
 
-    const db = readDB();
+    const db = await readDB();
     const orgs = db.organizations || [];
     const org = orgs.find(o => o.id === id);
     
@@ -253,7 +253,7 @@ router.delete('/:id/users/:email', (req, res) => {
     }
 
     org.users.splice(index, 1);
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ User ${email} removed from organization ${org.name}`);
     res.json(org);

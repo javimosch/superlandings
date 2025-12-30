@@ -1,5 +1,5 @@
 const express = require('express');
-const { readDB } = require('../lib/db');
+const { readDB } = require('../lib/store');
 const { hasRight } = require('../lib/auth');
 const { logAudit, AUDIT_ACTIONS } = require('../lib/audit');
 const { 
@@ -17,10 +17,10 @@ const {
 const router = express.Router({ mergeParams: true });
 
 // Get all versions for a landing
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { id } = req.params;
-    const db = readDB();
+    const db = await readDB();
     
     const landing = db.landings.find(l => l.id === id);
     if (!landing) {
@@ -36,7 +36,7 @@ router.get('/', (req, res) => {
 });
 
 // Create a manual version snapshot
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -45,7 +45,7 @@ router.post('/', (req, res) => {
   try {
     const { id } = req.params;
     const { description } = req.body;
-    const db = readDB();
+    const db = await readDB();
     
     const landing = db.landings.find(l => l.id === id);
     if (!landing) {
@@ -58,7 +58,7 @@ router.post('/', (req, res) => {
     }
 
     // Log audit event
-    logAudit(id, {
+    await logAudit(id, {
       action: AUDIT_ACTIONS.VERSION_CREATE,
       actor: req.currentUser?.email || 'admin',
       isAdmin: req.adminAuth,
@@ -74,7 +74,7 @@ router.post('/', (req, res) => {
 });
 
 // Get a specific version
-router.get('/:versionId', (req, res) => {
+router.get('/:versionId', async (req, res) => {
   try {
     const { id, versionId } = req.params;
     
@@ -91,7 +91,7 @@ router.get('/:versionId', (req, res) => {
 });
 
 // Get version content preview (HTML only)
-router.get('/:versionId/preview', (req, res) => {
+router.get('/:versionId/preview', async (req, res) => {
   try {
     const { id, versionId } = req.params;
     
@@ -108,7 +108,7 @@ router.get('/:versionId/preview', (req, res) => {
 });
 
 // Rollback to a specific version
-router.post('/:versionId/rollback', (req, res) => {
+router.post('/:versionId/rollback', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -116,7 +116,7 @@ router.post('/:versionId/rollback', (req, res) => {
 
   try {
     const { id, versionId } = req.params;
-    const db = readDB();
+    const db = await readDB();
     
     const landing = db.landings.find(l => l.id === id);
     if (!landing) {
@@ -128,12 +128,12 @@ router.post('/:versionId/rollback', (req, res) => {
       return res.status(404).json({ error: 'Version not found' });
     }
 
-    rollbackToVersion(landing, versionId);
+    await rollbackToVersion(landing, versionId);
     
     console.log(`🔄 Rolled back landing "${landing.name}" to version ${versionId}`);
 
     // Log audit event
-    logAudit(id, {
+    await logAudit(id, {
       action: AUDIT_ACTIONS.ROLLBACK,
       actor: req.currentUser?.email || 'admin',
       isAdmin: req.adminAuth,
@@ -152,11 +152,11 @@ router.post('/:versionId/rollback', (req, res) => {
 });
 
 // Get diff between a version and the previous version (or current state)
-router.get('/:versionId/diff', (req, res) => {
+router.get('/:versionId/diff', async (req, res) => {
   try {
     const { id, versionId } = req.params;
     const { compareTo } = req.query; // 'previous' or 'current'
-    const db = readDB();
+    const db = await readDB();
     
     const landing = db.landings.find(l => l.id === id);
     if (!landing) {
@@ -367,7 +367,7 @@ function computeLCS(oldLines, newLines) {
 }
 
 // Delete a specific version
-router.delete('/:versionId', (req, res) => {
+router.delete('/:versionId', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -382,7 +382,7 @@ router.delete('/:versionId', (req, res) => {
     }
 
     // Log audit event
-    logAudit(id, {
+    await logAudit(id, {
       action: AUDIT_ACTIONS.VERSION_DELETE,
       actor: req.currentUser?.email || 'admin',
       isAdmin: req.adminAuth,
@@ -398,7 +398,7 @@ router.delete('/:versionId', (req, res) => {
 });
 
 // Update version metadata (description and tag)
-router.put('/:versionId', (req, res) => {
+router.put('/:versionId', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -414,7 +414,7 @@ router.put('/:versionId', (req, res) => {
 
     // Log audit event for tag changes
     if (tag !== undefined) {
-      logAudit(id, {
+      await logAudit(id, {
         action: tag ? AUDIT_ACTIONS.VERSION_TAG : AUDIT_ACTIONS.VERSION_UNTAG,
         actor: req.currentUser?.email || 'admin',
         isAdmin: req.adminAuth,

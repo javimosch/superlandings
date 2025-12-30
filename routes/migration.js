@@ -1,17 +1,17 @@
 const express = require('express');
-const { readDB, writeDB } = require('../lib/db');
+const { readDB, writeDB } = require('../lib/store');
 const { migrateExistingLandings } = require('../lib/migrate-versions');
 
 const router = express.Router();
 
 // RBAC Migration - seed default organization and update landings
-router.post('/rbac', (req, res) => {
+router.post('/rbac', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
   try {
-    const db = readDB();
+    const db = await readDB();
     let changes = { organizationCreated: false, landingsUpdated: 0 };
 
     // Initialize arrays if not exist
@@ -42,7 +42,7 @@ router.post('/rbac', (req, res) => {
       }
     });
 
-    writeDB(db);
+    await writeDB(db);
 
     const message = [];
     if (changes.organizationCreated) {
@@ -71,7 +71,7 @@ router.post('/rbac', (req, res) => {
 });
 
 // Move landing to another organization (admin only)
-router.post('/move-landing', (req, res) => {
+router.post('/move-landing', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
@@ -83,7 +83,7 @@ router.post('/move-landing', (req, res) => {
       return res.status(400).json({ error: 'landingId and targetOrganizationId are required' });
     }
 
-    const db = readDB();
+    const db = await readDB();
     
     // Check target organization exists
     const orgs = db.organizations || [];
@@ -101,7 +101,7 @@ router.post('/move-landing', (req, res) => {
 
     const oldOrgId = landing.organizationId;
     landing.organizationId = targetOrganizationId;
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ Landing "${landing.name}" moved from org ${oldOrgId} to ${targetOrganizationId}`);
     
@@ -117,13 +117,13 @@ router.post('/move-landing', (req, res) => {
 });
 
 // Version Migration - add version tracking to existing landings
-router.post('/versions', (req, res) => {
+router.post('/versions', async (req, res) => {
   if (!req.adminAuth) {
     return res.status(403).json({ error: 'Admin access required' });
   }
 
   try {
-    const migratedCount = migrateExistingLandings();
+    const migratedCount = await migrateExistingLandings();
     
     res.json({ 
       success: true, 

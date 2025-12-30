@@ -1,5 +1,6 @@
 const express = require('express');
-const { readDB, writeDB, migrateDomains } = require('../lib/db');
+const { migrateDomains } = require('../lib/db');
+const { readDB, writeDB } = require('../lib/store');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
 const { logAudit, AUDIT_ACTIONS } = require('../lib/audit');
 
@@ -9,7 +10,7 @@ const router = express.Router({ mergeParams: true });
 router.post('/publish', async (req, res) => {
   try {
     const { id } = req.params;
-    const db = readDB();
+    const db = await readDB();
     
     const landing = db.landings.find(l => l.id === id);
     if (!landing) {
@@ -31,13 +32,13 @@ router.post('/publish', async (req, res) => {
     
     landing.published = true;
     landing.traefikConfigFile = configFileName;
-    writeDB(db);
+    await writeDB(db);
 
     const domainUrls = landing.domains.map(d => `https://${d.domain}`).join(', ');
     console.log(`✅ Landing published successfully: ${domainUrls}`);
 
     // Log audit event
-    logAudit(id, {
+    await logAudit(id, {
       action: AUDIT_ACTIONS.PUBLISH,
       actor: req.currentUser?.email || 'admin',
       isAdmin: req.adminAuth,
@@ -60,7 +61,7 @@ router.post('/publish', async (req, res) => {
 router.post('/unpublish', async (req, res) => {
   try {
     const { id } = req.params;
-    const db = readDB();
+    const db = await readDB();
     
     const landing = db.landings.find(l => l.id === id);
     if (!landing) {
@@ -79,12 +80,12 @@ router.post('/unpublish', async (req, res) => {
     
     landing.published = false;
     landing.traefikConfigFile = '';
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ Landing unpublished successfully`);
 
     // Log audit event
-    logAudit(id, {
+    await logAudit(id, {
       action: AUDIT_ACTIONS.UNPUBLISH,
       actor: req.currentUser?.email || 'admin',
       isAdmin: req.adminAuth,

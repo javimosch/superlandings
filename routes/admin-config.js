@@ -1,22 +1,23 @@
 const express = require('express');
-const { readDB, writeDB, migrateDomains, getAllDomainStrings } = require('../lib/db');
+const { migrateDomains, getAllDomainStrings } = require('../lib/db');
+const { readDB, writeDB } = require('../lib/store');
 const { deployAdminTraefikConfig, removeAdminTraefikConfig, validateTraefikEnv } = require('../lib/traefik');
 
 const router = express.Router();
 
 // Get admin config
-router.get('/', (req, res) => {
-  const db = readDB();
+router.get('/', async (req, res) => {
+  const db = await readDB();
   const adminConfig = db.adminConfig || { domains: [], published: false, traefikConfigFile: '' };
   adminConfig.domains = migrateDomains(adminConfig.domains || []);
   res.json(adminConfig);
 });
 
 // Update admin domains
-router.put('/domains', (req, res) => {
+router.put('/domains', async (req, res) => {
   try {
     const { domains } = req.body;
-    const db = readDB();
+    const db = await readDB();
     
     if (!db.adminConfig) {
       db.adminConfig = { domains: [], published: false, traefikConfigFile: '' };
@@ -38,7 +39,7 @@ router.put('/domains', (req, res) => {
     console.log(`🌐 Updating admin domains: [${oldDomainStrings.join(', ')}] -> [${newDomainStrings.join(', ')}]`);
 
     db.adminConfig.domains = newDomains;
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ Admin domains updated successfully`);
 
@@ -52,7 +53,7 @@ router.put('/domains', (req, res) => {
 // Publish admin
 router.post('/publish', async (req, res) => {
   try {
-    const db = readDB();
+    const db = await readDB();
     
     if (!db.adminConfig) {
       db.adminConfig = { domains: [], published: false, traefikConfigFile: '' };
@@ -76,7 +77,7 @@ router.post('/publish', async (req, res) => {
     
     db.adminConfig.published = true;
     db.adminConfig.traefikConfigFile = 'superlandings-admin.yml';
-    writeDB(db);
+    await writeDB(db);
 
     const domainUrls = db.adminConfig.domains.map(d => `https://${d.domain}`).join(', ');
     console.log(`✅ Admin published successfully: ${domainUrls}`);
@@ -95,7 +96,7 @@ router.post('/publish', async (req, res) => {
 // Unpublish admin
 router.post('/unpublish', async (req, res) => {
   try {
-    const db = readDB();
+    const db = await readDB();
     
     if (!db.adminConfig || !db.adminConfig.published) {
       return res.status(400).json({ error: 'Admin is not published' });
@@ -113,7 +114,7 @@ router.post('/unpublish', async (req, res) => {
     
     db.adminConfig.published = false;
     db.adminConfig.traefikConfigFile = '';
-    writeDB(db);
+    await writeDB(db);
 
     console.log(`✅ Admin unpublished successfully`);
 

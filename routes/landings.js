@@ -2,7 +2,8 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const AdmZip = require('adm-zip');
-const { readDB, writeDB, LANDINGS_DIR, migrateDomains } = require('../lib/db');
+const { LANDINGS_DIR, migrateDomains } = require('../lib/db');
+const { readDB, writeDB } = require('../lib/store');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
 const { hasRight } = require('../lib/auth');
 const { createVersion, deleteAllVersions } = require('../lib/versions');
@@ -21,10 +22,10 @@ router.use('/:id/audit', landingAuditRouter);
 router.use('/:id', landingPublishRouter);
 
 // Get all landings (filtered by organization for non-admin users)
-router.get('/', (req, res) => {
-  const db = readDB();
+router.get('/', async (req, res) => {
+  const db = await readDB();
   let landings = db.landings || [];
-  
+
   // Filter by organization if current organization is set
   if (req.currentOrganization) {
     landings = landings.filter(l => l.organizationId === req.currentOrganization.id);
@@ -33,7 +34,7 @@ router.get('/', (req, res) => {
     const orgIds = req.userOrganizations.map(o => o.id);
     landings = landings.filter(l => orgIds.includes(l.organizationId));
   }
-  
+
   landings = landings.map(landing => ({
     ...landing,
     domains: migrateDomains(landing.domains || [])
@@ -42,7 +43,7 @@ router.get('/', (req, res) => {
 });
 
 // Create landing
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:create')) {
     return res.status(403).json({ error: 'Missing permission: landings:create' });
@@ -58,7 +59,7 @@ router.post('/', (req, res) => {
         parsedDomains = [];
       }
     }
-    const db = readDB();
+    const db = await readDB();
 
     if (db.landings.find(l => l.slug === slug)) {
       return res.status(400).json({ error: 'Slug already exists' });
@@ -119,15 +120,15 @@ router.post('/', (req, res) => {
     }
 
     // Create initial version
-    const initialVersion = createVersion(landing, 'Initial version');
+    const initialVersion = await createVersion(landing, 'Initial version');
     landing.currentVersionId = initialVersion.id;
     landing.currentVersionNumber = initialVersion.versionNumber;
 
     db.landings.push(landing);
-    writeDB(db);
+    await writeDB(db);
 
     // Log audit event
-    logAudit(landing.id, {
+    await logAudit(landing.id, {
       action: AUDIT_ACTIONS.CREATE,
       actor: req.currentUser?.email || 'admin',
       isAdmin: req.adminAuth,
@@ -143,7 +144,7 @@ router.post('/', (req, res) => {
 });
 
 // Update landing
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -152,8 +153,8 @@ router.put('/:id', (req, res) => {
   try {
     const { id } = req.params;
     const { content } = req.body;
-    const db = readDB();
-    
+    const db = await readDB();
+
     const landing = db.landings.find(l => l.id === id);
     if (!landing) {
       return res.status(404).json({ error: 'Landing not found' });
@@ -163,18 +164,18 @@ router.put('/:id', (req, res) => {
 
     if (landing.type === 'html') {
       fs.writeFileSync(path.join(landingDir, 'index.html'), content);
-      
+
       // Create version after update
-      const afterVersion = createVersion(landing, 'Updated content');
-      
+      const afterVersion = await createVersion(landing, 'Updated content');
+
       // Update landing to point to the new version
       landing.currentVersionId = afterVersion.id;
       landing.currentVersionNumber = afterVersion.versionNumber;
-      
-      writeDB(db);
+
+      await writeDB(db);
 
       // Log audit event with linked version
-      logAudit(id, {
+      await logAudit(id, {
         action: AUDIT_ACTIONS.UPDATE,
         actor: req.currentUser?.email || 'admin',
         isAdmin: req.adminAuth,
@@ -207,18 +208,18 @@ router.put('/:id', (req, res) => {
           fs.renameSync(file.path, dest);
         });
       }
-      
+
       // Create version after update
-      const afterVersion = createVersion(landing, 'Updated EJS files');
-      
+      const afterVersion = await createVersion(landing, 'Updated EJS files');
+
       // Update landing to point to the new version
       landing.currentVersionId = afterVersion.id;
       landing.currentVersionNumber = afterVersion.versionNumber;
-      
-      writeDB(db);
+
+      await writeDB(db);
 
       // Log audit event with linked version
-      logAudit(id, {
+      await logAudit(id, {
         action: AUDIT_ACTIONS.UPDATE,
         actor: req.currentUser?.email || 'admin',
         isAdmin: req.adminAuth,
@@ -237,11 +238,11 @@ router.put('/:id', (req, res) => {
 });
 
 // Get landing content
-router.get('/:id/content', (req, res) => {
+router.get('/:id/content', async (req, res) => {
   try {
     const { id } = req.params;
-    const db = readDB();
-    
+    const db = await readDB();
+
     const landing = db.landings.find(l => l.id === id);
     if (!landing) {
       return res.status(404).json({ error: 'Landing not found' });
@@ -260,7 +261,7 @@ router.get('/:id/content', (req, res) => {
 });
 
 // Update domains
-router.put('/:id/domains', (req, res) => {
+router.put('/:id/domains', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:domains')) {
     return res.status(403).json({ error: 'Missing permission: landings:domains' });
@@ -269,8 +270,8 @@ router.put('/:id/domains', (req, res) => {
   try {
     const { id } = req.params;
     const { domains } = req.body;
-    const db = readDB();
-    
+    const db = await readDB();
+
     const landing = db.landings.find(l => l.id === id);
     if (!landing) {
       return res.status(404).json({ error: 'Landing not found' });
@@ -294,14 +295,14 @@ router.put('/:id/domains', (req, res) => {
     console.log(`🌐 Updating domains for ${landing.name}: [${oldDomainStrings.join(', ')}] -> [${newDomainStrings.join(', ')}]`);
 
     landing.domains = newDomains;
-    writeDB(db);
+    await writeDB(db);
 
     // Log audit event for domain changes
     const addedDomains = newDomainStrings.filter(d => !oldDomainStrings.includes(d));
     const removedDomains = oldDomainStrings.filter(d => !newDomainStrings.includes(d));
-    
+
     if (addedDomains.length > 0) {
-      logAudit(id, {
+      await logAudit(id, {
         action: AUDIT_ACTIONS.DOMAIN_ADD,
         actor: req.currentUser?.email || 'admin',
         isAdmin: req.adminAuth,
@@ -309,9 +310,9 @@ router.put('/:id/domains', (req, res) => {
         metadata: { domains: addedDomains }
       });
     }
-    
+
     if (removedDomains.length > 0) {
-      logAudit(id, {
+      await logAudit(id, {
         action: AUDIT_ACTIONS.DOMAIN_REMOVE,
         actor: req.currentUser?.email || 'admin',
         isAdmin: req.adminAuth,
@@ -338,7 +339,7 @@ router.delete('/:id', async (req, res) => {
 
   try {
     const { id } = req.params;
-    const db = readDB();
+    const db = await readDB();
     
     const landingIndex = db.landings.findIndex(l => l.id === id);
     if (landingIndex === -1) {
@@ -369,11 +370,11 @@ router.delete('/:id', async (req, res) => {
     console.log(`✅ Landing versions removed`);
 
     // Delete audit log for this landing
-    deleteAuditLog(landing.id);
+    await deleteAuditLog(landing.id);
     console.log(`✅ Landing audit log removed`);
 
     db.landings.splice(landingIndex, 1);
-    writeDB(db);
+    await writeDB(db);
     
     console.log(`✅ Landing deleted successfully`);
 

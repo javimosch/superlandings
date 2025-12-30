@@ -1,19 +1,20 @@
 const express = require('express');
 const path = require('path');
-const { readDB, LANDINGS_DIR } = require('../lib/db');
+const { LANDINGS_DIR, migrateDomains } = require('../lib/db');
+const { readDB } = require('../lib/store');
 
 const router = express.Router();
 
 // Middleware: Handle static assets for domain-based routing
-function domainStaticMiddleware(req, res, next) {
+async function domainStaticMiddleware(req, res, next) {
   const host = req.get('host');
   if (!host) return next();
   
-  const db = readDB();
+  const db = await readDB();
   
   const landing = db.landings.find(l => 
-    l.published && l.type === 'static' && l.domains && l.domains.some(domain => 
-      domain === host || domain === host.replace(/:\d+$/, '')
+    l.published && l.type === 'static' && l.domains && migrateDomains(l.domains).some(d =>
+      d.domain === host || d.domain === host.replace(/:\d+$/, '')
     )
   );
   
@@ -25,9 +26,9 @@ function domainStaticMiddleware(req, res, next) {
 }
 
 // Middleware: Handle static assets for slug-based routing
-function slugStaticMiddleware(req, res, next) {
+async function slugStaticMiddleware(req, res, next) {
   const { slug } = req.params;
-  const db = readDB();
+  const db = await readDB();
   const landing = db.landings.find(l => l.slug === slug);
   
   if (landing && landing.type === 'static') {
@@ -38,16 +39,16 @@ function slugStaticMiddleware(req, res, next) {
 }
 
 // Domain-based routing for landing pages (fallback if Traefik addPrefix fails)
-function serveLandingByDomain(req, res, next) {
+async function serveLandingByDomain(req, res, next) {
   try {
     const host = req.get('host');
     if (!host) return next();
     
-    const db = readDB();
+    const db = await readDB();
     
     const landing = db.landings.find(l => 
-      l.published && l.domains && l.domains.some(domain => 
-        domain === host || domain === host.replace(/:\d+$/, '')
+      l.published && l.domains && migrateDomains(l.domains).some(d =>
+        d.domain === host || d.domain === host.replace(/:\d+$/, '')
       )
     );
     
@@ -74,10 +75,10 @@ function serveLandingByDomain(req, res, next) {
 }
 
 // Serve landing by slug
-function serveLandingBySlug(req, res) {
+async function serveLandingBySlug(req, res) {
   try {
     const { slug } = req.params;
-    const db = readDB();
+    const db = await readDB();
     
     const landing = db.landings.find(l => l.slug === slug);
     if (!landing) {

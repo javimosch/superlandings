@@ -7,6 +7,7 @@ const FileStore = require('session-file-store')(session);
 
 // Local modules
 const { ensureDirectories, DATA_DIR, LANDINGS_DIR } = require('./lib/db');
+const { initPersistence } = require('./lib/store');
 const { sessionAuth, setCurrentOrganization, handleLogin } = require('./lib/auth');
 const landingsRouter = require('./routes/landings');
 const adminConfigRouter = require('./routes/admin-config');
@@ -65,14 +66,14 @@ app.get('/login', (req, res) => {
 });
 
 // Login endpoint
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
   
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password required' });
   }
 
-  const result = handleLogin(req, username, password);
+  const result = await handleLogin(req, username, password);
   
   if (!result.success) {
     return res.status(401).json({ error: 'Invalid credentials' });
@@ -136,8 +137,16 @@ app.use('/:slug/*', slugStaticMiddleware);
 app.get('/:slug', serveLandingBySlug);
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`SuperLandings server running on http://localhost:${PORT}`);
-  console.log(`Admin panel: http://localhost:${PORT}/admin`);
-  console.log(`Username: ${process.env.ADMIN_USERNAME}`);
-});
+(async () => {
+  try {
+    await initPersistence();
+  } catch (e) {
+    console.error('❌ Persistence initialization failed:', e.message);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`SuperLandings server running on http://localhost:${PORT}`);
+    console.log(`Admin panel: http://localhost:${PORT}/admin`);
+    console.log(`Username: ${process.env.ADMIN_USERNAME}`);
+  });
+})();
