@@ -38,6 +38,72 @@
         <p v-if="editingDomains.published" class="mt-2 text-xs sm:text-sm text-blue-600">ℹ️ Landing is currently published. You can publish/unpublish individual domains without affecting others.</p>
       </div>
 
+      <div class="mb-4 border-t pt-4">
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <h4 class="text-sm sm:text-base font-semibold text-gray-900">Cloudflare DNS</h4>
+          <span v-if="cloudflareStatus.enabled" class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Enabled</span>
+          <span v-else class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">Disabled (missing env)</span>
+        </div>
+
+        <p v-if="!cloudflareStatus.enabled" class="mt-2 text-xs sm:text-sm text-gray-600">
+          Set <strong>CLOUDFLARE_API_TOKEN</strong> in env to enable Cloudflare DNS automation.
+        </p>
+
+        <div v-if="cloudflareStatus.enabled" class="mt-3 space-y-3">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="text-xs sm:text-sm text-gray-700">
+              <span class="font-medium">Status:</span>
+              <span v-if="cloudflareStatus.connected" class="text-green-700">Connected</span>
+              <span v-else class="text-orange-700">Not connected</span>
+              <span v-if="cloudflareStatus.connectedAt" class="text-gray-500">({{ formatDate(cloudflareStatus.connectedAt) }})</span>
+            </div>
+            <div v-if="!authInfo.isAdmin" class="flex gap-2">
+              <button v-if="!cloudflareStatus.connected" @click="connectCloudflare" :disabled="loading.cloudflareConnect" type="button" class="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                <span v-if="loading.cloudflareConnect">⏳</span>
+                <span v-else>Connect Cloudflare</span>
+              </button>
+              <button v-else @click="disconnectCloudflare" :disabled="loading.cloudflareDisconnect" type="button" class="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                <span v-if="loading.cloudflareDisconnect">⏳</span>
+                <span v-else>Disconnect</span>
+              </button>
+            </div>
+          </div>
+
+          <p v-if="authInfo.isAdmin" class="text-xs sm:text-sm text-gray-600">
+            Cloudflare connection is available for user accounts (not the admin session).
+          </p>
+
+          <div class="grid grid-cols-1 gap-2">
+            <label class="block text-xs sm:text-sm font-medium text-gray-700">Domain to configure in Cloudflare</label>
+            <input v-model="cloudflareDomainInput" type="text" class="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs sm:text-sm" placeholder="example.com" />
+            <p class="text-xs sm:text-sm text-gray-500">
+              This will remove conflicting records and create:
+              <span class="font-mono">A @</span>,
+              <span class="font-mono">A *</span>,
+              <span class="font-mono">CNAME www -> @</span>
+            </p>
+          </div>
+
+          <button @click="configureCloudflareDns" :disabled="loading.cloudflareConfigure || !cloudflareStatus.connected || !cloudflareDomainInput.trim()" type="button" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+            <span v-if="loading.cloudflareConfigure">Configuring...</span>
+            <span v-else>Configure Cloudflare DNS</span>
+          </button>
+
+          <div v-if="cloudflareRecap.steps && cloudflareRecap.steps.length > 0" class="mt-3">
+            <h5 class="text-xs sm:text-sm font-semibold text-gray-800 mb-2">Recap</h5>
+            <div class="space-y-1 max-h-40 overflow-y-auto border rounded-lg p-3 bg-gray-50">
+              <div v-for="(step, idx) in cloudflareRecap.steps" :key="idx" class="text-xs sm:text-sm">
+                <span v-if="step.action === 'remove'" class="text-red-700 font-medium">REMOVE</span>
+                <span v-else-if="step.action === 'add'" class="text-green-700 font-medium">ADD</span>
+                <span v-else class="text-gray-700 font-medium">SKIP</span>
+                <span class="text-gray-700"> - {{ step.message }}</span>
+              </div>
+            </div>
+            <p v-if="cloudflareRecap.info" class="mt-2 text-xs sm:text-sm text-blue-700">ℹ️ {{ cloudflareRecap.info }}</p>
+          </div>
+        </div>
+      </div>
+
       <div class="flex gap-3 flex-col sm:flex-row">
         <button @click="saveDomains" class="flex-1 bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-700 transition font-semibold text-sm sm:text-base">
           Save Domains

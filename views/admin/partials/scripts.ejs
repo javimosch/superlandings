@@ -30,6 +30,11 @@
         showDomainsModal: false,
         showAdminDomainsModal: false,
         adminConfig: { domains: [], published: false, traefikConfigFile: '' },
+
+        // Cloudflare DNS
+        cloudflareStatus: { enabled: false, connected: false, connectedAt: null, email: null },
+        cloudflareDomainInput: '',
+        cloudflareRecap: { steps: [], info: '' },
         
         // Organizations Modal
         showOrganizationsModal: false,
@@ -125,6 +130,7 @@
       await this.loadAuthInfo();
       await this.loadLandings();
       await this.loadAdminConfig();
+      await this.loadCloudflareStatus();
       if (this.authInfo.isAdmin) {
         await this.loadAllUsers();
         await this.loadAvailableRights();
@@ -158,6 +164,17 @@
           this.authInfo = await res.json();
         } catch (err) {
           console.error('Error loading auth info:', err);
+        }
+      },
+
+      async loadCloudflareStatus() {
+        try {
+          const res = await fetch('/api/cloudflare/status', { headers: this.getHeaders() });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to load Cloudflare status');
+          this.cloudflareStatus = data;
+        } catch (err) {
+          this.cloudflareStatus = { enabled: false, connected: false, connectedAt: null, email: null };
         }
       },
       
@@ -353,10 +370,78 @@
       openDomainsModal(landing) {
         this.editingDomains = { ...landing, domains: landing.domains.map(d => ({ ...d })) };
         this.showDomainsModal = true;
+
+        this.cloudflareDomainInput = '';
+        this.cloudflareRecap = { steps: [], info: '' };
+        this.loadCloudflareStatus();
       },
-      closeDomainsModal() { this.showDomainsModal = false; this.editingDomains = null; },
+      closeDomainsModal() {
+        this.showDomainsModal = false;
+        this.editingDomains = null;
+        this.cloudflareDomainInput = '';
+        this.cloudflareRecap = { steps: [], info: '' };
+      },
       addDomain() { this.editingDomains.domains.push({ domain: '', published: false }); },
       removeDomain(index) { this.editingDomains.domains.splice(index, 1); },
+
+      async connectCloudflare() {
+        this.loading.cloudflareConnect = true;
+        try {
+          const res = await fetch('/api/cloudflare/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...this.getHeaders() },
+            body: JSON.stringify({})
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to connect Cloudflare');
+          this.showSuccess('Cloudflare connected');
+          await this.loadCloudflareStatus();
+        } catch (err) {
+          this.showError('Error connecting Cloudflare: ' + err.message);
+        } finally {
+          this.loading.cloudflareConnect = false;
+        }
+      },
+
+      async disconnectCloudflare() {
+        this.loading.cloudflareDisconnect = true;
+        try {
+          const res = await fetch('/api/cloudflare/disconnect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...this.getHeaders() },
+            body: JSON.stringify({})
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to disconnect Cloudflare');
+          this.showSuccess('Cloudflare disconnected');
+          await this.loadCloudflareStatus();
+        } catch (err) {
+          this.showError('Error disconnecting Cloudflare: ' + err.message);
+        } finally {
+          this.loading.cloudflareDisconnect = false;
+        }
+      },
+
+      async configureCloudflareDns() {
+        this.loading.cloudflareConfigure = true;
+        this.cloudflareRecap = { steps: [], info: '' };
+        try {
+          const domain = this.cloudflareDomainInput.trim();
+          const res = await fetch('/api/cloudflare/dns/configure', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...this.getHeaders() },
+            body: JSON.stringify({ domain })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to configure DNS');
+          this.cloudflareRecap = { steps: data.steps || [], info: data.info || '' };
+          this.showSuccess('Cloudflare DNS configured');
+        } catch (err) {
+          this.showError('Error configuring Cloudflare DNS: ' + err.message);
+        } finally {
+          this.loading.cloudflareConfigure = false;
+        }
+      },
       
       async publishSingleDomain(domain) {
         const loadingKey = this.editingDomains.id + '-' + domain;
