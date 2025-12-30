@@ -1,8 +1,9 @@
 const express = require('express');
 const { migrateDomains } = require('../lib/db');
-const { readDB, writeDB } = require('../lib/store');
+const { readDB, writeDB, getEngine } = require('../lib/store');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
 const { logAudit, AUDIT_ACTIONS } = require('../lib/audit');
+const { clearLandingCache } = require('../lib/versions');
 
 const router = express.Router({ mergeParams: true });
 
@@ -33,6 +34,10 @@ router.post('/publish', async (req, res) => {
     landing.published = true;
     landing.traefikConfigFile = configFileName;
     await writeDB(db);
+
+    if (getEngine() === 'mongo') {
+      clearLandingCache(landing.slug);
+    }
 
     const domainUrls = landing.domains.map(d => `https://${d.domain}`).join(', ');
     console.log(`✅ Landing published successfully: ${domainUrls}`);
@@ -81,6 +86,10 @@ router.post('/unpublish', async (req, res) => {
     landing.published = false;
     landing.traefikConfigFile = '';
     await writeDB(db);
+
+    if (getEngine() === 'mongo') {
+      clearLandingCache(landing.slug);
+    }
 
     console.log(`✅ Landing unpublished successfully`);
 

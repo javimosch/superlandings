@@ -3,10 +3,24 @@ const path = require('path');
 const fs = require('fs');
 const AdmZip = require('adm-zip');
 const { LANDINGS_DIR, migrateDomains } = require('../lib/db');
-const { readDB, writeDB } = require('../lib/store');
+const { readDB, writeDB, getEngine } = require('../lib/store');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
+const { 
+  createVersion, 
+  getVersions, 
+  getVersion, 
+  rollbackToVersion, 
+  deleteVersion,
+  deleteAllVersions,
+  updateVersionMetadata,
+  getVersionContentPreview,
+  getVersionFilesContent,
+  getCurrentLandingFilesContent,
+  restoreVersionToDisk,
+  clearLandingCache,
+  getLandingFsDir
+} = require('../lib/versions');
 const { hasRight } = require('../lib/auth');
-const { createVersion, deleteAllVersions } = require('../lib/versions');
 const { logAudit, deleteAuditLog, AUDIT_ACTIONS } = require('../lib/audit');
 const landingDomainsRouter = require('./landing-domains');
 const landingPublishRouter = require('./landing-publish');
@@ -15,31 +29,30 @@ const landingAuditRouter = require('./landing-audit');
 
 const router = express.Router();
 
-// Mount sub-routers
-router.use('/:id/domains', landingDomainsRouter);
-router.use('/:id/versions', landingVersionsRouter);
-router.use('/:id/audit', landingAuditRouter);
-router.use('/:id', landingPublishRouter);
-
 // Get all landings (filtered by organization for non-admin users)
 router.get('/', async (req, res) => {
-  const db = await readDB();
-  let landings = db.landings || [];
+  try {
+    const db = await readDB();
+    let landings = db.landings || [];
 
-  // Filter by organization if current organization is set
-  if (req.currentOrganization) {
-    landings = landings.filter(l => l.organizationId === req.currentOrganization.id);
-  } else if (!req.adminAuth && req.userOrganizations) {
-    // Fallback: show all user's organizations if no specific organization is selected
-    const orgIds = req.userOrganizations.map(o => o.id);
-    landings = landings.filter(l => orgIds.includes(l.organizationId));
+    // Filter by organization if current organization is set
+    if (req.currentOrganization) {
+      landings = landings.filter(l => l.organizationId === req.currentOrganization.id);
+    } else if (!req.adminAuth && req.userOrganizations) {
+      // Fallback: show all user's organizations if no specific organization is selected
+      const orgIds = req.userOrganizations.map(o => o.id);
+      landings = landings.filter(l => orgIds.includes(l.organizationId));
+    }
+
+    landings = landings.map(landing => ({
+      ...landing,
+      domains: migrateDomains(landing.domains || [])
+    }));
+    res.json(landings);
+  } catch (error) {
+    console.error('Error getting landings:', error);
+    res.status(500).json({ error: error.message });
   }
-
-  landings = landings.map(landing => ({
-    ...landing,
-    domains: migrateDomains(landing.domains || [])
-  }));
-  res.json(landings);
 });
 
 // Create landing
@@ -65,7 +78,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Slug already exists' });
     }
 
-    const landingDir = path.join(LANDINGS_DIR, slug);
+    const landingDir = getLandingFsDir({ slug, type });
     if (!fs.existsSync(landingDir)) fs.mkdirSync(landingDir, { recursive: true });
 
     // Determine organization
@@ -93,6 +106,7 @@ router.post('/', async (req, res) => {
     if (type === 'html') {
       const content = req.body.content || '<html><body><h1>New Landing</h1></body></html>';
       fs.writeFileSync(path.join(landingDir, 'index.html'), content);
+      landing.content = content;
     } else if (type === 'static' && req.files && req.files.length > 0) {
       const zipFile = req.files.find(f => f.originalname.endsWith('.zip'));
       if (zipFile) {
@@ -152,7 +166,6 @@ router.put('/:id', async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { content } = req.body;
     const db = await readDB();
 
     const landing = db.landings.find(l => l.id === id);
@@ -160,13 +173,19 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Landing not found' });
     }
 
-    const landingDir = path.join(LANDINGS_DIR, landing.slug);
+    const landingDir = getLandingFsDir(landing);
+    fs.mkdirSync(landingDir, { recursive: true });
 
     if (landing.type === 'html') {
+      const content = typeof req.body.content === 'string' ? req.body.content : '';
       fs.writeFileSync(path.join(landingDir, 'index.html'), content);
+      landing.content = content;
 
       // Create version after update
       const afterVersion = await createVersion(landing, 'Updated content');
+      if (!afterVersion) {
+        throw new Error('Failed to create version snapshot after update');
+      }
 
       // Update landing to point to the new version
       landing.currentVersionId = afterVersion.id;
@@ -183,6 +202,11 @@ router.put('/:id', async (req, res) => {
         metadata: { versionNumber: afterVersion.versionNumber },
         versionIds: [afterVersion.id]
       });
+
+      // Invalidate cache on disk for mongo-backed mode
+      if (getEngine() === 'mongo') {
+        clearLandingCache(landing.slug);
+      }
 
       res.json({ success: true });
     } else if (landing.type === 'ejs' && req.files && req.files.length > 0) {
@@ -228,11 +252,16 @@ router.put('/:id', async (req, res) => {
         versionIds: [afterVersion.id]
       });
 
+      if (getEngine() === 'mongo') {
+        clearLandingCache(landing.slug);
+      }
+
       res.json({ success: true });
     } else {
       res.status(400).json({ error: 'Only HTML and EJS landings can be edited this way' });
     }
   } catch (error) {
+    console.error('Error updating landing:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -249,13 +278,16 @@ router.get('/:id/content', async (req, res) => {
     }
 
     if (landing.type === 'html') {
-      const landingDir = path.join(LANDINGS_DIR, landing.slug);
-      const content = fs.readFileSync(path.join(landingDir, 'index.html'), 'utf-8');
+      if (getEngine() === 'mongo' && typeof landing.content === 'string') {
+        return res.json({ content: landing.content });
+      }
+      const content = await ensureLandingContentAndRead(landing);
       res.json({ content });
     } else {
       res.status(400).json({ error: 'Only HTML landings can be retrieved this way' });
     }
   } catch (error) {
+    console.error('Error reading landing content:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -317,7 +349,6 @@ router.put('/:id/domains', async (req, res) => {
         actor: req.currentUser?.email || 'admin',
         isAdmin: req.adminAuth,
         details: `Removed domains: ${removedDomains.join(', ')}`,
-        metadata: { domains: removedDomains }
       });
     }
 
@@ -326,6 +357,28 @@ router.put('/:id/domains', async (req, res) => {
     res.json({ success: true, landing });
   } catch (error) {
     console.error('❌ Error updating domains:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Clear landing filesystem cache (mongo mode helper)
+router.post('/:id/cache/clear', async (req, res) => {
+  if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
+    return res.status(403).json({ error: 'Missing permission: landings:update' });
+  }
+
+  try {
+    const { id } = req.params;
+    const db = await readDB();
+    const landing = db.landings.find(l => l.id === id);
+    if (!landing) {
+      return res.json({ success: true, cleared: false, skipped: 'Landing not found' });
+    }
+
+    const cleared = clearLandingCache(landing.slug);
+    res.json({ success: true, cleared });
+  } catch (error) {
+    console.error('Error clearing landing cache:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -383,5 +436,44 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Mount sub-routers (after specific routes to avoid swallowing them)
+router.use('/:id/domains', landingDomainsRouter);
+router.use('/:id/versions', landingVersionsRouter);
+router.use('/:id/audit', landingAuditRouter);
+router.use('/:id', landingPublishRouter);
+
+async function ensureLandingContentAndRead(landing) {
+  const landingDir = getLandingFsDir(landing);
+  const indexPath = path.join(landingDir, 'index.html');
+
+  fs.mkdirSync(landingDir, { recursive: true });
+
+  if (!fs.existsSync(indexPath)) {
+    if (getEngine() === 'mongo' && landing.type === 'html' && typeof landing.content === 'string') {
+      fs.writeFileSync(indexPath, landing.content);
+      return landing.content;
+    }
+
+    try {
+      const versions = await getVersions(landing.id);
+      const versionId = landing.currentVersionId || (versions && versions[0]?.id);
+      if (!versionId) throw new Error('No version available to restore landing content');
+      const ok = await restoreVersionToDisk(landing, versionId);
+      if (!ok) throw new Error('Version zip missing');
+    } catch (err) {
+      console.warn(`⚠️  Could not restore landing content for ${landing.slug}: ${err.message}`);
+    }
+
+    if (!fs.existsSync(indexPath)) {
+      fs.writeFileSync(
+        indexPath,
+        `<html><body><h1>Landing content missing</h1><p>The content for "${landing.slug}" could not be restored. Please re-upload or republish.</p></body></html>`
+      );
+    }
+  }
+
+  return fs.readFileSync(indexPath, 'utf-8');
+}
 
 module.exports = router;
