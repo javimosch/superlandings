@@ -4,16 +4,18 @@ const multer = require('multer');
 const path = require('path');
 const session = require('express-session');
 const FileStore = require('session-file-store')(session);
+const MongoStore = require('connect-mongo');
 
 // Local modules
 const { ensureDirectories, DATA_DIR, LANDINGS_DIR } = require('./lib/db');
-const { initPersistence } = require('./lib/store');
+const { initPersistence, getEngine } = require('./lib/store');
 const { sessionAuth, setCurrentOrganization, handleLogin } = require('./lib/auth');
 const landingsRouter = require('./routes/landings');
 const adminConfigRouter = require('./routes/admin-config');
 const organizationsRouter = require('./routes/organizations');
 const usersRouter = require('./routes/users');
 const migrationRouter = require('./routes/migration');
+const cloudflareRouter = require('./routes/cloudflare');
 const { domainStaticMiddleware, slugStaticMiddleware, serveLandingByDomain, serveLandingBySlug } = require('./routes/serve');
 
 // Initialize
@@ -27,13 +29,25 @@ ensureDirectories();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session middleware with file store
+const sessionTtlSeconds = parseInt(process.env.SESSION_TTL_SECONDS || `${24 * 60 * 60}`, 10);
+const sessionCookieMaxAgeMs = sessionTtlSeconds * 1000;
+
+const sessionStore = (getEngine() === 'mongo')
+  ? MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      dbName: process.env.MONGO_DB,
+      collectionName: 'sessions',
+      ttl: sessionTtlSeconds
+    })
+  : new FileStore({
+      path: path.join(DATA_DIR, 'sessions'),
+      ttl: 24 * 60 * 60 * 30, // 1 month
+      reapInterval: 60 * 60 // Cleanup every hour
+    });
+
+// Session middleware
 app.use(session({
-  store: new FileStore({
-    path: path.join(DATA_DIR, 'sessions'),
-    ttl: 24 * 60 * 60 * 30, // 1 month
-    reapInterval: 60 * 60 // Cleanup every hour
-  }),
+  store: sessionStore,
   secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
@@ -41,7 +55,7 @@ app.use(session({
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     sameSite: 'strict',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: sessionCookieMaxAgeMs
   }
 }));
 
@@ -115,6 +129,7 @@ app.use('/api/admin-config', sessionAuth, adminConfigRouter);
 app.use('/api/organizations', sessionAuth, organizationsRouter);
 app.use('/api/users', sessionAuth, usersRouter);
 app.use('/api/migration', sessionAuth, migrationRouter);
+app.use('/api/cloudflare', sessionAuth, setCurrentOrganization, cloudflareRouter);
 
 // Auth info endpoint
 app.get('/api/auth/me', sessionAuth, setCurrentOrganization, (req, res) => {
