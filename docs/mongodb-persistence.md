@@ -41,21 +41,31 @@ When Mongo persistence is enabled, the app performs an idempotent sync from the 
   - Versions and audit logs are stored on the filesystem under `data/versions` and `data/audit`.
 
 - Mongo mode:
-  - The full JSON DB object is stored in Mongo in the `app_state` collection under document `_id: "db"`.
+  - The JSON DB object (excluding `landings`) is stored in Mongo in the `app_state` collection under document `_id: "db"`.
+  - Landings are stored in a dedicated `landings` collection (one document per landing).
+  - Version metadata is stored in a dedicated `versions` collection (one document per version).
   - Audit logs are stored in Mongo in the `audit` collection:
     - One document per landing: `_id: <landingId>`
     - `entries: [...]` (newest first)
   - Version content continues to live on the filesystem under `data/versions`.
+  - Sessions are stored in Mongo (collection `sessions`) when `PERSISTENCE_ENGINE=mongo`.
 
 ## Bootstrap sync behavior
 
 When `PERSISTENCE_ENGINE=mongo` and `MONGO_SYNC_ON_BOOT=true`:
 
 - The app reads `data/db.json`.
-- It upserts Mongo document `app_state/_id=db` with `{ data: <jsonDb>, syncedAt: ... }`.
-- If `MONGO_SYNC_FORCE=false` and `app_state/_id=db` already exists, sync is skipped.
+- It upserts Mongo document `app_state/_id=db` with `{ data: <jsonDb without landings>, syncedAt: ... }`.
+- It syncs `data/db.json` landings into the `landings` collection.
+- It syncs existing on-disk version `metadata.json` files into the `versions` collection.
+- If `MONGO_SYNC_FORCE=false` and data already exists, sync is skipped for each component.
+
+## Sessions
+
+- In Mongo mode, sessions are stored in the `sessions` collection.
+- TTL is controlled by `SESSION_TTL_SECONDS`.
 
 ## Notes
 
 - Landing assets remain on disk under `data/landings` in both modes.
-- Sessions remain file-based under `data/sessions`.
+- In `json` mode, sessions remain file-based under `data/sessions`.
