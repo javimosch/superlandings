@@ -102,8 +102,10 @@
         
         // UI State
         loading: {},
-        toasts: [],
-        toastId: 0
+        toastId: 0,
+        isMounted: false,
+        showLoading: false, // New property added
+        iconsInitialized: false,
       };
     },
     computed: {
@@ -125,6 +127,15 @@
       }
     },
     async mounted() {
+      // Wait one tick to guarantee DOM (including toasts container) is mounted before allowing UI actions
+      await this.$nextTick();
+      this.isMounted = true;
+      // Expose toast helpers for quick debugging in console
+      window.__toastDebug = {
+        add: (type = 'success', message = 'debug toast') => this.addToast(type, message, 5000),
+        clear: () => { this.toastStore = []; this.renderToasts(); },
+        list: () => (this.toastStore || []).map(t => ({ ...t }))
+      };
       await this.loadOrganizations();
       this.initCurrentOrganization();
       await this.loadAuthInfo();
@@ -135,17 +146,72 @@
         await this.loadAllUsers();
         await this.loadAvailableRights();
       }
+      // Initialize lucide icons after Vue finishes rendering
+      this.refreshIcons();
+    },
+    beforeUnmount() {
+      this.isMounted = false;
+    },
+    updated() {
+      // Skip icon refresh on updates to avoid DOM mutations during Vue patching
     },
     methods: {
+      refreshIcons() {
+        if (this.iconsInitialized) return;
+        if (!this.isMounted || !window.lucide?.createIcons) return;
+        this.iconsInitialized = true;
+        this.$nextTick(() => {
+          try { window.lucide.createIcons(); } catch (e) { console.warn('Lucide init skipped:', e?.message || e); }
+        });
+      },
       // Toast notifications
-      addToast(type, message, duration = 5000) {
-        const id = ++this.toastId;
-        this.toasts.push({ id, type, message });
+      // Toasts: managed outside reactivity to avoid Vue patch races
+      async addToast(type, message, duration = 5000) {
+        if (!this.isMounted) return;
+        if (!this.toastStore) this.toastStore = [];
+        await this.$nextTick();
+        const id = String(++this.toastId);
+        const toast = { id, type, message };
+        this.toastStore.push(toast);
+        // enqueue render
+        this.$nextTick(() => this.renderToasts());
         setTimeout(() => this.removeToast(id), duration);
       },
-      removeToast(id) {
-        const index = this.toasts.findIndex(t => t.id === id);
-        if (index !== -1) this.toasts.splice(index, 1);
+      async removeToast(id) {
+        if (!this.isMounted) return;
+        if (!this.toastStore) return;
+        await this.$nextTick();
+        this.toastStore = this.toastStore.filter(t => t.id !== id);
+        this.$nextTick(() => this.renderToasts());
+      },
+      renderToasts() {
+        const root = document.getElementById('toast-root');
+        if (!root) return;
+        root.innerHTML = '';
+        const frag = document.createDocumentFragment();
+        // keep max 3 (newest last)
+        const list = (this.toastStore || []).slice(-3);
+        list.forEach((toast) => {
+          const wrapper = document.createElement('div');
+          wrapper.className = `px-6 py-4 rounded-lg shadow-lg max-w-md toast-enter text-white ${toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'}`;
+          wrapper.innerHTML = `
+            <div class="flex items-start">
+              ${toast.type === 'error'
+                ? '<svg class="w-6 h-6 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+                : '<svg class="w-6 h-6 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'}
+              <div class="flex-1">${toast.message}</div>
+              <button data-id="${toast.id}" class="ml-4 text-white/80 hover:text-white pointer-events-auto">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+          `;
+          // close handler
+          wrapper.querySelector('button')?.addEventListener('click', () => this.removeToast(toast.id));
+          frag.appendChild(wrapper);
+        });
+        root.appendChild(frag);
       },
       showError(message) { this.addToast('error', message); },
       showSuccess(message) { this.addToast('success', message, 3000); },
@@ -363,6 +429,24 @@
           this.loadLandings();
         } catch (err) {
           this.showError('Error deleting landing: ' + err.message);
+        }
+      },
+
+      async clearLandingCache(landing) {
+        const loadingKey = `cache-${landing.id}`;
+        if (!this.isMounted) return;
+        this.loading = { ...this.loading, [loadingKey]: true };
+        try {
+          const res = await fetch(`/api/landings/${landing.id}/cache/clear`, { method: 'POST' });
+          let data = {};
+          try { data = await res.json(); } catch (e) { data = {}; }
+          if (!res.ok) throw new Error(data.error || 'Failed to clear cache');
+          const msg = data.cleared ? 'Cache cleared from disk' : 'Cache already clean';
+          this.showSuccess(msg);
+        } catch (err) {
+          this.showError('Error clearing cache: ' + err.message);
+        } finally {
+          this.loading = { ...this.loading, [loadingKey]: false };
         }
       },
       

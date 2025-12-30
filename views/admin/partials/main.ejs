@@ -1,17 +1,20 @@
 <main class="w-full px-3 sm:px-4 py-6 sm:py-8">
   <div class="mb-6 flex gap-2 sm:gap-4 flex-wrap">
-    <button v-if="canCreate" @click="showAddModal = true" class="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-700 transition font-semibold shadow-md text-sm sm:text-base">
+    <button v-if="canCreate" @click="showAddModal = true" class="bg-slate-900 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-slate-800 transition font-semibold shadow-md text-sm sm:text-base flex items-center gap-2">
+      <i class="ti ti-circle-plus text-lg"></i>
       + Add New Landing
     </button>
     <!-- Admin: Migration RBAC -->
-    <button v-if="authInfo.isAdmin" @click="runMigration" :disabled="loading.migration" class="bg-purple-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-purple-700 transition font-semibold shadow-md disabled:opacity-50 text-sm sm:text-base">
-      <span v-if="loading.migration">⏳ Migrating...</span>
-      <span v-else>🔄 Migration RBAC</span>
+    <button v-if="authInfo.isAdmin" @click="runMigration" :disabled="loading.migration" class="bg-slate-800 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-slate-700 transition font-semibold shadow-md disabled:opacity-50 text-sm sm:text-base flex items-center gap-2">
+      <i v-if="loading.migration" class="ti ti-loader-2 w-5 h-5 animate-spin"></i>
+      <i v-else class="ti ti-arrows-right-left text-lg"></i>
+      <span>{{ loading.migration ? 'Migrating...' : 'Migration RBAC' }}</span>
     </button>
     <!-- Admin: Migration Versions -->
-    <button v-if="authInfo.isAdmin" @click="runVersionMigration" :disabled="loading.versionMigration" class="bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-indigo-700 transition font-semibold shadow-md disabled:opacity-50 text-sm sm:text-base">
-      <span v-if="loading.versionMigration">⏳ Migrating...</span>
-      <span v-else>📜 Migration Versions</span>
+    <button v-if="authInfo.isAdmin" @click="runVersionMigration" :disabled="loading.versionMigration" class="bg-slate-800 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-slate-700 transition font-semibold shadow-md disabled:opacity-50 text-sm sm:text-base flex items-center gap-2">
+      <i v-if="loading.versionMigration" class="ti ti-loader-2 w-5 h-5 animate-spin"></i>
+      <i v-else class="ti ti-scroll text-lg"></i>
+      <span>{{ loading.versionMigration ? 'Migrating...' : 'Migration Versions' }}</span>
     </button>
   </div>
 
@@ -32,22 +35,23 @@
             <h3 class="text-base sm:text-lg font-semibold text-gray-900 break-words">{{ landing.name }}</h3>
             <div class="mt-2 flex items-center gap-2 text-xs sm:text-sm text-gray-600 flex-wrap">
               <span class="flex items-center">
-                <svg class="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
-                </svg>
-                <a :href="'/' + landing.slug" target="_blank" class="hover:text-blue-600 truncate">/{{ landing.slug }}</a>
+                <i class="ti ti-link mr-1 flex-shrink-0 text-slate-500 text-base"></i>
+                <a :href="'/' + landing.slug" target="_blank" class="hover:text-slate-700 truncate">/{{ landing.slug }}</a>
               </span>
-              <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium uppercase flex-shrink-0">{{ landing.type }}</span>
-              <span v-if="landing.published" class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium flex-shrink-0">✓ Published</span>
-              <span v-if="landing.currentVersionNumber" class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium flex-shrink-0">
-                📜 v{{ landing.currentVersionNumber }}
+              <span class="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium uppercase flex-shrink-0">{{ landing.type }}</span>
+              <span v-if="landing.published" class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs font-medium flex-shrink-0 flex items-center gap-1">
+                <i class="ti ti-badge-check text-base"></i> Published
+              </span>
+              <span v-if="landing.currentVersionNumber" class="px-2 py-1 bg-sky-100 text-sky-700 rounded text-xs font-medium flex-shrink-0 flex items-center gap-1">
+                <i class="ti ti-scroll text-base"></i> v{{ landing.currentVersionNumber }}
               </span>
             </div>
             <div v-if="landing.domains && landing.domains.length > 0" class="mt-2 text-xs sm:text-sm text-gray-600 flex-wrap">
-              <span class="block">🌐 
+              <span class="block flex items-start gap-1">
+                <i class="ti ti-world text-base mt-0.5 text-slate-500"></i>
                 <template v-if="landing.published">
                   <template v-for="(domainObj, idx) in landing.domains.filter(d => d.published)" :key="idx">
-                    <a :href="'https://' + domainObj.domain" target="_blank" class="text-green-600 hover:text-blue-600 underline">{{ domainObj.domain }}</a><span v-if="idx < landing.domains.filter(d => d.published).length - 1">, </span>
+                    <a :href="'https://' + domainObj.domain" target="_blank" class="text-emerald-700 hover:text-slate-800 underline">{{ domainObj.domain }}</a><span v-if="idx < landing.domains.filter(d => d.published).length - 1">, </span>
                   </template>
                   <span v-if="landing.domains.some(d => !d.published)" class="text-gray-400 ml-1">({{ landing.domains.filter(d => !d.published).length }} unpublished)</span>
                 </template>
@@ -60,36 +64,41 @@
           </div>
           <div class="flex gap-2 flex-wrap text-xs sm:text-sm">
             <!-- Domains button - requires landings:domains permission -->
-            <button v-if="canDomains" @click="openDomainsModal(landing)" class="px-2 sm:px-3 py-2 bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition font-medium flex-shrink-0">
-              🌐
+            <button v-if="canDomains" @click="openDomainsModal(landing)" title="Domains" class="px-2 sm:px-3 py-2 bg-slate-100 text-slate-800 rounded hover:bg-slate-200 transition font-medium flex-shrink-0 flex items-center gap-1">
+              <i class="ti ti-world text-base"></i>
             </button>
             <!-- Publish/Unpublish - requires landings:domains permission -->
-            <button v-if="canDomains && !landing.published && landing.domains && landing.domains.length > 0" @click="publishLanding(landing.id)" :disabled="loading[landing.id]" class="px-2 sm:px-3 py-2 bg-green-100 text-green-700 rounded hover:bg-green-200 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0">
-              <span v-if="loading[landing.id]">⏳</span>
+            <button v-if="canDomains && !landing.published && landing.domains && landing.domains.length > 0" @click="publishLanding(landing.id)" :disabled="loading[landing.id]" class="px-2 sm:px-3 py-2 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 flex items-center gap-1">
+              <i v-if="loading[landing.id]" class="ti ti-loader-2 w-4 h-4 animate-spin"></i>
               <span v-else>Publish</span>
             </button>
-            <button v-if="canDomains && landing.published" @click="unpublishLanding(landing.id)" :disabled="loading[landing.id]" class="px-2 sm:px-3 py-2 bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0">
-              <span v-if="loading[landing.id]">⏳</span>
+            <button v-if="canDomains && landing.published" @click="unpublishLanding(landing.id)" :disabled="loading[landing.id]" class="px-2 sm:px-3 py-2 bg-amber-100 text-amber-800 rounded hover:bg-amber-200 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 flex items-center gap-1">
+              <i v-if="loading[landing.id]" class="ti ti-loader-2 w-4 h-4 animate-spin"></i>
               <span v-else>Unpublish</span>
             </button>
             <!-- Edit - requires landings:update permission -->
-            <button v-if="canUpdate && (landing.type === 'html' || landing.type === 'ejs')" @click="editLanding(landing)" class="px-2 sm:px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition font-medium flex-shrink-0">
+            <button v-if="canUpdate && (landing.type === 'html' || landing.type === 'ejs')" @click="editLanding(landing)" class="px-2 sm:px-3 py-2 bg-slate-100 text-slate-800 rounded hover:bg-slate-200 transition font-medium flex-shrink-0">
               Edit
             </button>
             <!-- Versions - requires landings:update permission -->
-            <button v-if="canUpdate" @click="openVersionsModal(landing)" class="px-2 sm:px-3 py-2 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition font-medium flex-shrink-0">
-              📜
+            <button v-if="canUpdate" @click="openVersionsModal(landing)" title="Versions" class="px-2 sm:px-3 py-2 bg-sky-100 text-sky-700 rounded hover:bg-sky-200 transition font-medium flex-shrink-0 flex items-center gap-1">
+              <i class="ti ti-versions text-base"></i>
             </button>
             <!-- Audit - requires landings:update permission -->
-            <button v-if="canUpdate" @click="openAuditModal(landing)" class="px-2 sm:px-3 py-2 bg-amber-100 text-amber-700 rounded hover:bg-amber-200 transition font-medium flex-shrink-0">
-              📋
+            <button v-if="canUpdate" @click="openAuditModal(landing)" title="Audit log" class="px-2 sm:px-3 py-2 bg-amber-100 text-amber-800 rounded hover:bg-amber-200 transition font-medium flex-shrink-0 flex items-center gap-1">
+              <i class="ti ti-clipboard-list text-base"></i>
             </button>
             <!-- Move - admin only -->
-            <button v-if="authInfo.isAdmin && organizations.length > 1" @click="openMoveModal(landing)" class="px-2 sm:px-3 py-2 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition font-medium flex-shrink-0">
+            <button v-if="authInfo.isAdmin && organizations.length > 1" @click="openMoveModal(landing)" class="px-2 sm:px-3 py-2 bg-slate-100 text-slate-800 rounded hover:bg-slate-200 transition font-medium flex-shrink-0">
               Move
             </button>
+            <!-- Clear cache (mongo landing cache) -->
+            <button v-if="canUpdate" @click="clearLandingCache(landing)" :disabled="loading[`cache-${landing.id}`]" class="px-2 sm:px-3 py-2 bg-amber-100 text-amber-800 rounded hover:bg-amber-200 transition font-medium disabled:opacity-50 flex-shrink-0 flex items-center gap-1">
+              <i v-if="loading[`cache-${landing.id}`]" class="ti ti-loader-2 w-4 h-4 animate-spin"></i>
+              <span v-else>Clear cache</span>
+            </button>
             <!-- Delete - requires landings:delete permission -->
-            <button v-if="canDelete" @click="deleteLanding(landing.id)" class="px-2 sm:px-3 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition font-medium flex-shrink-0">
+            <button v-if="canDelete" @click="deleteLanding(landing.id)" class="px-2 sm:px-3 py-2 bg-rose-100 text-rose-700 rounded hover:bg-rose-200 transition font-medium flex-shrink-0">
               Delete
             </button>
           </div>
