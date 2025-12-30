@@ -1,5 +1,11 @@
 <script>
   const { createApp } = Vue;
+  // Module mixins (landing CRUD, toasts) - added in batch 2
+  const moduleMixins = {
+    ...(window.AppModules?.toasts?.() || {}),
+    ...(window.AppModules?.landings ? window.AppModules.landings(window.AppServices || {}, window.AppHelpers || {}) : {}),
+    ...(window.AppModules?.domains ? window.AppModules.domains(window.AppServices || {}) : {})
+  };
 
   createApp({
     data() {
@@ -156,6 +162,8 @@
       // Skip icon refresh on updates to avoid DOM mutations during Vue patching
     },
     methods: {
+      // Module-provided methods override defaults
+      ...moduleMixins,
       refreshIcons() {
         if (this.iconsInitialized) return;
         if (!this.isMounted || !window.lucide?.createIcons) return;
@@ -164,58 +172,6 @@
           try { window.lucide.createIcons(); } catch (e) { console.warn('Lucide init skipped:', e?.message || e); }
         });
       },
-      // Toast notifications
-      // Toasts: managed outside reactivity to avoid Vue patch races
-      async addToast(type, message, duration = 5000) {
-        if (!this.isMounted) return;
-        if (!this.toastStore) this.toastStore = [];
-        await this.$nextTick();
-        const id = String(++this.toastId);
-        const toast = { id, type, message };
-        this.toastStore.push(toast);
-        // enqueue render
-        this.$nextTick(() => this.renderToasts());
-        setTimeout(() => this.removeToast(id), duration);
-      },
-      async removeToast(id) {
-        if (!this.isMounted) return;
-        if (!this.toastStore) return;
-        await this.$nextTick();
-        this.toastStore = this.toastStore.filter(t => t.id !== id);
-        this.$nextTick(() => this.renderToasts());
-      },
-      renderToasts() {
-        const root = document.getElementById('toast-root');
-        if (!root) return;
-        root.innerHTML = '';
-        const frag = document.createDocumentFragment();
-        // keep max 3 (newest last)
-        const list = (this.toastStore || []).slice(-3);
-        list.forEach((toast) => {
-          const wrapper = document.createElement('div');
-          wrapper.className = `px-6 py-4 rounded-lg shadow-lg max-w-md toast-enter text-white ${toast.type === 'error' ? 'bg-rose-600' : 'bg-emerald-600'}`;
-          wrapper.innerHTML = `
-            <div class="flex items-start">
-              ${toast.type === 'error'
-                ? '<svg class="w-6 h-6 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
-                : '<svg class="w-6 h-6 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'}
-              <div class="flex-1">${toast.message}</div>
-              <button data-id="${toast.id}" class="ml-4 text-white/80 hover:text-white pointer-events-auto">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
-            </div>
-          `;
-          // close handler
-          wrapper.querySelector('button')?.addEventListener('click', () => this.removeToast(toast.id));
-          frag.appendChild(wrapper);
-        });
-        root.appendChild(frag);
-      },
-      showError(message) { this.addToast('error', message); },
-      showSuccess(message) { this.addToast('success', message, 3000); },
-      
       // Close dropdowns on outside click
       closeDropdowns(e) {
         if (!e.target.closest('.relative')) {
@@ -294,15 +250,7 @@
         return org ? org.name : 'Unknown';
       },
       
-      // Landings
-      async loadLandings() {
-        try {
-          const res = await fetch('/api/landings', { headers: this.getHeaders() });
-          this.landings = await res.json();
-        } catch (err) {
-          this.showError('Error loading landings: ' + err.message);
-        }
-      },
+      // Landings (moved to module mixin)
       
       async loadAdminConfig() {
         try {
@@ -450,24 +398,6 @@
         }
       },
       
-      // Domains
-      openDomainsModal(landing) {
-        this.editingDomains = { ...landing, domains: landing.domains.map(d => ({ ...d })) };
-        this.showDomainsModal = true;
-
-        this.cloudflareDomainInput = '';
-        this.cloudflareRecap = { steps: [], info: '' };
-        this.loadCloudflareStatus();
-      },
-      closeDomainsModal() {
-        this.showDomainsModal = false;
-        this.editingDomains = null;
-        this.cloudflareDomainInput = '';
-        this.cloudflareRecap = { steps: [], info: '' };
-      },
-      addDomain() { this.editingDomains.domains.push({ domain: '', published: false }); },
-      removeDomain(index) { this.editingDomains.domains.splice(index, 1); },
-
       async connectCloudflare() {
         this.loading.cloudflareConnect = true;
         try {
@@ -524,154 +454,6 @@
           this.showError('Error configuring Cloudflare DNS: ' + err.message);
         } finally {
           this.loading.cloudflareConfigure = false;
-        }
-      },
-      
-      async publishSingleDomain(domain) {
-        const loadingKey = this.editingDomains.id + '-' + domain;
-        this.loading[loadingKey] = true;
-        try {
-          const res = await fetch(`/api/landings/${this.editingDomains.id}/domains/${encodeURIComponent(domain)}/publish`, { method: 'POST' });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess(data.message);
-          await this.loadLandings();
-          const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
-          if (domainObj) domainObj.published = true;
-        } catch (err) {
-          this.showError('Error publishing domain: ' + err.message);
-        } finally {
-          this.loading[loadingKey] = false;
-        }
-      },
-      
-      async unpublishSingleDomain(domain) {
-        const loadingKey = this.editingDomains.id + '-' + domain;
-        this.loading[loadingKey] = true;
-        try {
-          const res = await fetch(`/api/landings/${this.editingDomains.id}/domains/${encodeURIComponent(domain)}/unpublish`, { method: 'POST' });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess(data.message);
-          await this.loadLandings();
-          const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
-          if (domainObj) domainObj.published = false;
-        } catch (err) {
-          this.showError('Error unpublishing domain: ' + err.message);
-        } finally {
-          this.loading[loadingKey] = false;
-        }
-      },
-      
-      async saveDomains() {
-        try {
-          const domainPattern = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-          const domains = this.editingDomains.domains
-            .filter(d => d.domain?.trim())
-            .map(d => ({ domain: d.domain.trim(), published: d.published || false }));
-          const invalidDomains = domains.filter(d => !domainPattern.test(d.domain));
-          if (invalidDomains.length > 0) {
-            this.showError('Invalid domain format: ' + invalidDomains.map(d => d.domain).join(', '));
-            return;
-          }
-          const res = await fetch(`/api/landings/${this.editingDomains.id}/domains`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domains })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess('Domains updated successfully!');
-          this.closeDomainsModal();
-          this.loadLandings();
-        } catch (err) {
-          this.showError('Error updating domains: ' + err.message);
-        }
-      },
-      
-      async publishLanding(id) {
-        this.loading[id] = true;
-        try {
-          const res = await fetch(`/api/landings/${id}/publish`, { method: 'POST' });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess(data.message);
-          this.loadLandings();
-        } catch (err) {
-          this.showError('Error publishing: ' + err.message);
-        } finally {
-          this.loading[id] = false;
-        }
-      },
-      
-      async unpublishLanding(id) {
-        this.loading[id] = true;
-        try {
-          const res = await fetch(`/api/landings/${id}/unpublish`, { method: 'POST' });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess(data.message);
-          this.loadLandings();
-        } catch (err) {
-          this.showError('Error unpublishing: ' + err.message);
-        } finally {
-          this.loading[id] = false;
-        }
-      },
-      
-      // Admin Config
-      async saveAdminDomains() {
-        try {
-          const domainPattern = /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-          const domains = this.adminConfig.domains
-            .filter(d => d.domain?.trim())
-            .map(d => ({ domain: d.domain.trim(), published: d.published || false }));
-          const invalidDomains = domains.filter(d => !domainPattern.test(d.domain));
-          if (invalidDomains.length > 0) {
-            this.showError('Invalid domain format: ' + invalidDomains.map(d => d.domain).join(', '));
-            return;
-          }
-          const res = await fetch('/api/admin-config/domains', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domains })
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess('Admin domains updated successfully!');
-          this.loadAdminConfig();
-        } catch (err) {
-          this.showError('Error updating admin domains: ' + err.message);
-        }
-      },
-      
-      async publishAdmin() {
-        this.loading.admin = true;
-        try {
-          const res = await fetch('/api/admin-config/publish', { method: 'POST' });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess(data.message);
-          this.loadAdminConfig();
-        } catch (err) {
-          this.showError('Error publishing admin: ' + err.message);
-        } finally {
-          this.loading.admin = false;
-        }
-      },
-      
-      async unpublishAdmin() {
-        this.loading.admin = true;
-        try {
-          const res = await fetch('/api/admin-config/unpublish', { method: 'POST' });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          this.showSuccess(data.message);
-          this.loadAdminConfig();
-        } catch (err) {
-          this.showError('Error unpublishing admin: ' + err.message);
-        } finally {
-          this.loading.admin = false;
         }
       },
       

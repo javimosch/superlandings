@@ -53,6 +53,20 @@
   </div>
   <!-- Toasts outside Vue app to avoid patch collisions -->
   <%- include('partials/toasts') %>
+  <!-- Modular frontend scaffolding: state, helpers, services (non-breaking) -->
+  <%- include('partials/state.ejs') %>
+  <%- include('partials/helpers.ejs') %>
+  <%- include('partials/services/auth.js') %>
+  <%- include('partials/services/landings.js') %>
+  <%- include('partials/services/domains.js') %>
+  <%- include('partials/services/versions.js') %>
+  <%- include('partials/services/audit.js') %>
+  <%- include('partials/services/organizations.js') %>
+  <%- include('partials/services/admin-config.js') %>
+  <%- include('partials/services/cloudflare.js') %>
+  <%- include('partials/modules/toasts.js') %>
+  <%- include('partials/modules/landings.js') %>
+  <%- include('partials/modules/domains.js') %>
   <%- include('partials/scripts') %>
 </body>
 </html>
