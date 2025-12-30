@@ -17,7 +17,7 @@ const {
 const router = express.Router({ mergeParams: true });
 
 // Get all versions for a landing
-router.get('/', async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const db = await readDB();
@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ error: 'Landing not found' });
     }
 
-    const versions = getVersions(id);
+    const versions = await getVersions(id);
     res.json(versions);
   } catch (error) {
     console.error('Error getting versions:', error);
@@ -36,7 +36,7 @@ router.get('/', async (req, res) => {
 });
 
 // Create a manual version snapshot
-router.post('/', async (req, res) => {
+router.post('/:id', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -52,7 +52,7 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Landing not found' });
     }
 
-    const version = createVersion(landing, description || '');
+    const version = await createVersion(landing, description || '');
     if (!version) {
       return res.status(400).json({ error: 'Could not create version' });
     }
@@ -74,11 +74,11 @@ router.post('/', async (req, res) => {
 });
 
 // Get a specific version
-router.get('/:versionId', async (req, res) => {
+router.get('/:id/:versionId', async (req, res) => {
   try {
     const { id, versionId } = req.params;
     
-    const version = getVersion(id, versionId);
+    const version = await getVersion(id, versionId);
     if (!version) {
       return res.status(404).json({ error: 'Version not found' });
     }
@@ -91,7 +91,7 @@ router.get('/:versionId', async (req, res) => {
 });
 
 // Get version content preview (HTML only)
-router.get('/:versionId/preview', async (req, res) => {
+router.get('/:id/:versionId/preview', async (req, res) => {
   try {
     const { id, versionId } = req.params;
     
@@ -108,7 +108,7 @@ router.get('/:versionId/preview', async (req, res) => {
 });
 
 // Rollback to a specific version
-router.post('/:versionId/rollback', async (req, res) => {
+router.post('/:id/:versionId/rollback', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -123,7 +123,7 @@ router.post('/:versionId/rollback', async (req, res) => {
       return res.status(404).json({ error: 'Landing not found' });
     }
 
-    const version = getVersion(id, versionId);
+    const version = await getVersion(id, versionId);
     if (!version) {
       return res.status(404).json({ error: 'Version not found' });
     }
@@ -152,7 +152,7 @@ router.post('/:versionId/rollback', async (req, res) => {
 });
 
 // Get diff between a version and the previous version (or current state)
-router.get('/:versionId/diff', async (req, res) => {
+router.get('/:id/:versionId/diff', async (req, res) => {
   try {
     const { id, versionId } = req.params;
     const { compareTo } = req.query; // 'previous' or 'current'
@@ -163,7 +163,7 @@ router.get('/:versionId/diff', async (req, res) => {
       return res.status(404).json({ error: 'Landing not found' });
     }
 
-    const versions = getVersions(id);
+    const versions = await getVersions(id);
     const versionIndex = versions.findIndex(v => v.id === versionId);
     
     if (versionIndex === -1) {
@@ -367,7 +367,7 @@ function computeLCS(oldLines, newLines) {
 }
 
 // Delete a specific version
-router.delete('/:versionId', async (req, res) => {
+router.delete('/:id/:versionId', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -376,7 +376,7 @@ router.delete('/:versionId', async (req, res) => {
   try {
     const { id, versionId } = req.params;
     
-    const deleted = deleteVersion(id, versionId);
+    const deleted = await deleteVersion(id, versionId);
     if (!deleted) {
       return res.status(404).json({ error: 'Version not found' });
     }
@@ -398,7 +398,7 @@ router.delete('/:versionId', async (req, res) => {
 });
 
 // Update version metadata (description and tag)
-router.put('/:versionId', async (req, res) => {
+router.patch('/:id/:versionId', async (req, res) => {
   // Check permission
   if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
     return res.status(403).json({ error: 'Missing permission: landings:update' });
@@ -408,7 +408,7 @@ router.put('/:versionId', async (req, res) => {
     const { id, versionId } = req.params;
     const { description, tag } = req.body;
     
-    const updatedVersion = updateVersionMetadata(id, versionId, { description, tag });
+    const updatedVersion = await updateVersionMetadata(id, versionId, { description, tag });
     
     console.log(`📝 Updated version metadata for ${versionId}:`, { description, tag });
 
