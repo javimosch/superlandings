@@ -26,6 +26,7 @@
   "dependencies": {
     "adm-zip": "^0.5.10",
     "bcryptjs": "^2.4.3",
+    "connect-mongo": "^5.1.0",
     "cookie-parser": "^1.4.6",
     "dotenv": "^16.3.1",
     "ejs": "^3.1.9",
