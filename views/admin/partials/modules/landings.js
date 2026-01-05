@@ -124,7 +124,8 @@
         async deleteLanding(id) {
           try {
             if (!landings) throw new Error('Landings service missing');
-            const { ok, data } = await landings.remove(id);
+            const sshKey = this.getSetting('traefik_ssh_private_key');
+            const { ok, data } = await landings.remove(id, sshKey);
             if (!ok) throw new Error(data.error || 'Failed to delete');
             this.showSuccess('Landing deleted successfully!');
             this.loadLandings();

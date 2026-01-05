@@ -23,41 +23,43 @@
         addDomain() { this.editingDomains.domains.push({ domain: '', published: false }); },
         removeDomain(index) { this.editingDomains.domains.splice(index, 1); },
 
-        async publishSingleDomain(domain) {
-          const loadingKey = this.editingDomains.id + '-' + domain;
-          this.loading[loadingKey] = true;
-          try {
-            if (!domains) throw new Error('Domains service missing');
-            const { ok, data } = await domains.publishDomain(this.editingDomains.id, domain);
-            if (!ok) throw new Error(data.error || 'Failed to publish domain');
-            this.showSuccess(data.message);
-            await this.loadLandings();
-            const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
-            if (domainObj) domainObj.published = true;
-          } catch (err) {
-            this.showError('Error publishing domain: ' + err.message);
-          } finally {
-            this.loading[loadingKey] = false;
-          }
-        },
+    async publishSingleDomain(domain) {
+      const loadingKey = this.editingDomains.id + '-' + domain;
+      this.loading[loadingKey] = true;
+      try {
+        if (!domains) throw new Error('Domains service missing');
+        const sshKey = this.getSetting('traefik_ssh_private_key');
+        const { ok, data } = await domains.publishDomain(this.editingDomains.id, domain, sshKey);
+        if (!ok) throw new Error(data.error || 'Failed to publish domain');
+        this.showSuccess(data.message);
+        await this.loadLandings();
+        const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
+        if (domainObj) domainObj.published = true;
+      } catch (err) {
+        this.showError('Error publishing domain: ' + err.message);
+      } finally {
+        this.loading[loadingKey] = false;
+      }
+    },
 
-        async unpublishSingleDomain(domain) {
-          const loadingKey = this.editingDomains.id + '-' + domain;
-          this.loading[loadingKey] = true;
-          try {
-            if (!domains) throw new Error('Domains service missing');
-            const { ok, data } = await domains.unpublishDomain(this.editingDomains.id, domain);
-            if (!ok) throw new Error(data.error || 'Failed to unpublish domain');
-            this.showSuccess(data.message);
-            await this.loadLandings();
-            const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
-            if (domainObj) domainObj.published = false;
-          } catch (err) {
-            this.showError('Error unpublishing domain: ' + err.message);
-          } finally {
-            this.loading[loadingKey] = false;
-          }
-        },
+    async unpublishSingleDomain(domain) {
+      const loadingKey = this.editingDomains.id + '-' + domain;
+      this.loading[loadingKey] = true;
+      try {
+        if (!domains) throw new Error('Domains service missing');
+        const sshKey = this.getSetting('traefik_ssh_private_key');
+        const { ok, data } = await domains.unpublishDomain(this.editingDomains.id, domain, sshKey);
+        if (!ok) throw new Error(data.error || 'Failed to unpublish domain');
+        this.showSuccess(data.message);
+        await this.loadLandings();
+        const domainObj = this.editingDomains.domains.find(d => d.domain === domain);
+        if (domainObj) domainObj.published = false;
+      } catch (err) {
+        this.showError('Error unpublishing domain: ' + err.message);
+      } finally {
+        this.loading[loadingKey] = false;
+      }
+    },
 
         async saveDomains() {
           try {
@@ -85,7 +87,8 @@
           this.loading[id] = true;
           try {
             if (!domains) throw new Error('Domains service missing');
-            const { ok, data } = await domains.publishLanding(id);
+            const sshKey = this.getSetting('traefik_ssh_private_key');
+            const { ok, data } = await domains.publishLanding(id, sshKey);
             if (!ok) throw new Error(data.error || 'Failed to publish');
             this.showSuccess(data.message);
             this.loadLandings();
@@ -100,7 +103,8 @@
           this.loading[id] = true;
           try {
             if (!domains) throw new Error('Domains service missing');
-            const { ok, data } = await domains.unpublishLanding(id);
+            const sshKey = this.getSetting('traefik_ssh_private_key');
+            const { ok, data } = await domains.unpublishLanding(id, sshKey);
             if (!ok) throw new Error(data.error || 'Failed to unpublish');
             this.showSuccess(data.message);
             this.loadLandings();
@@ -137,7 +141,8 @@
           this.loading.admin = true;
           try {
             if (!adminConfig) throw new Error('AdminConfig service missing');
-            const { ok, data } = await adminConfig.publish();
+            const sshKey = this.getSetting('traefik_ssh_private_key');
+            const { ok, data } = await adminConfig.publish(sshKey);
             if (!ok) throw new Error(data.error || 'Failed to publish admin');
             this.showSuccess(data.message);
             this.loadAdminConfig();
@@ -152,7 +157,8 @@
           this.loading.admin = true;
           try {
             if (!adminConfig) throw new Error('AdminConfig service missing');
-            const { ok, data } = await adminConfig.unpublish();
+            const sshKey = this.getSetting('traefik_ssh_private_key');
+            const { ok, data } = await adminConfig.unpublish(sshKey);
             if (!ok) throw new Error(data.error || 'Failed to unpublish admin');
             this.showSuccess(data.message);
             this.loadAdminConfig();
