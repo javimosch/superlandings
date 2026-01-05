@@ -1,0 +1,61 @@
+<script>
+  /**
+   * scripts-services.ejs
+   * Shared API helpers, formatting, and UI utilities.
+   */
+  (function() {
+    window.AppHelpers = {
+      formatDate(dateStr) {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleDateString();
+      },
+      formatVersionDate(dateStr) {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleString();
+      },
+      formatBytes(bytes) {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      },
+      countChanges(fileDiff) {
+        if (fileDiff.type === 'added') {
+          const lines = fileDiff.hunks.reduce((sum, h) => sum + (h.newLines?.length || 0), 0);
+          return `+${lines} lines`;
+        }
+        if (fileDiff.type === 'deleted') {
+          const lines = fileDiff.hunks.reduce((sum, h) => sum + (h.oldLines?.length || 0), 0);
+          return `-${lines} lines`;
+        }
+        let added = 0, removed = 0;
+        fileDiff.hunks.forEach(h => {
+          h.changes?.forEach(c => {
+            if (c.type === 'add') added++;
+            if (c.type === 'remove') removed++;
+          });
+        });
+        return `+${added} -${removed}`;
+      },
+      countChangesNum(fileDiff) {
+        if (fileDiff.type === 'added') {
+          return fileDiff.hunks.reduce((sum, h) => sum + (h.newLines?.length || 0), 0);
+        }
+        if (fileDiff.type === 'deleted') {
+          return fileDiff.hunks.reduce((sum, h) => sum + (h.oldLines?.length || 0), 0);
+        }
+        let total = 0;
+        fileDiff.hunks.forEach(h => {
+          h.changes?.forEach(c => {
+            if (c.type === 'add' || c.type === 'remove') total++;
+          });
+        });
+        return total;
+      }
+    };
+
+    window.AppServices = window.AppServices || {};
+    // Extended services or global fetch helpers could be added here
+  })();
+</script>

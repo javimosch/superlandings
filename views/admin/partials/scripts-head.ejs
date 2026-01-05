@@ -1,0 +1,232 @@
+<script>
+  /**
+   * scripts-head.ejs
+   * Bootstraps the Vue app and manages global state.
+   */
+  const { createApp } = Vue;
+
+  // Assembly of module mixins
+  const moduleMixins = {
+    ...(window.AppModules?.toasts?.() || {}),
+    ...(window.AppModules?.core ? window.AppModules.core(window.AppServices || {}, window.AppHelpers || {}) : {}),
+    ...(window.AppModules?.landings ? window.AppModules.landings(window.AppServices || {}, window.AppHelpers || {}) : {}),
+    ...(window.AppModules?.domains ? window.AppModules.domains(window.AppServices || {}) : {}),
+    ...(window.AppModules?.versions ? window.AppModules.versions(window.AppServices || {}) : {}),
+    ...(window.AppModules?.audit ? window.AppModules.audit(window.AppServices || {}) : {}),
+    ...(window.AppModules?.organizations ? window.AppModules.organizations(window.AppServices || {}, window.AppHelpers || {}) : {}),
+    ...(window.AppModules?.cloudflare ? window.AppModules.cloudflare(window.AppServices || {}, window.AppHelpers || {}) : {})
+  };
+
+  createApp({
+    data() {
+      return {
+        // Auth & Organizations
+        authInfo: { isAdmin: false, user: null, organizations: [], rights: [] },
+        organizations: [],
+        allOrganizations: [],
+        currentOrganization: null,
+        showOrgSwitcher: false,
+        showMobileMenu: false,
+        
+        // Landings
+        landings: [],
+        showAddModal: false,
+        showEditModal: false,
+        newLanding: { name: '', slug: '', type: 'html', domains: [], content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Landing</title>\n</head>\n<body>\n  <h1>Hello World!</h1>\n</body>\n</html>' },
+        selectedEjsFiles: [],
+        selectedEjsZip: null,
+        editSelectedEjsFiles: [],
+        editSelectedEjsZip: null,
+        editingLanding: null,
+        addEditor: null,
+        editEditor: null,
+        
+        // Domains
+        editingDomains: null,
+        showDomainsModal: false,
+        showAdminDomainsModal: false,
+        adminConfig: { domains: [], published: false, traefikConfigFile: '' },
+
+        // Cloudflare DNS
+        cloudflareStatus: { enabled: false, connected: false, connectedAt: null, email: null },
+        cloudflareDomainInput: '',
+        cloudflareRecap: { steps: [], info: '' },
+        
+        // Organizations Modal
+        showOrganizationsModal: false,
+        newOrgName: '',
+        editingOrg: null,
+        allUsers: [],
+        newUserEmail: '',
+        newUserPassword: '',
+        showAddUserToOrg: null,
+        addUserEmail: '',
+        availableRights: [],
+        
+        // User Rights Modal
+        showUserRightsModal: false,
+        editingUserRights: null,
+        
+        // Move Landing Modal
+        showMoveModal: false,
+        movingLanding: null,
+        moveTargetOrgId: '',
+        
+        // Versions Modal
+        showVersionsModal: false,
+        versionLanding: null,
+        versions: [],
+        newVersionDescription: '',
+        showVersionPreviewModal: false,
+        previewingVersion: null,
+        versionPreviewContent: '',
+        
+        // Confirmation dialogs
+        showRollbackConfirm: false,
+        showDeleteConfirm: false,
+        confirmingVersion: null,
+        
+        // Version editing
+        editingVersionDescription: false,
+        editingVersionTag: false,
+        editingVersionId: null,
+        tempDescription: '',
+        tempTag: '',
+        
+        // Diff Modal
+        showDiffModal: false,
+        diffData: null,
+        collapsedFiles: {},
+        
+        // HTML View Modal
+        showVersionHtmlModal: false,
+        viewingHtmlVersion: null,
+        versionHtmlContent: '',
+        
+        // Audit Modal
+        showAuditModal: false,
+        auditLanding: null,
+        auditEntries: [],
+        auditTotal: 0,
+        auditHasMore: false,
+        auditOffset: 0,
+        
+        // Preview Modal
+        showPreviewModal: false,
+        previewContent: '',
+        previewMode: 'modal', // 'modal' or 'tab'
+        
+        // Settings Modal
+        showSettingsModal: false,
+        settingsTab: 'local',
+        localSettings: {},
+        dbSettings: {
+          TRAEFIK_ENABLED: false,
+          TRAEFIK_REMOTE_HOST: '',
+          TRAEFIK_REMOTE_USER: '',
+          TRAEFIK_REMOTE_PORT: '22',
+          TRAEFIK_REMOTE_PATH: '',
+          SERVER_IP: ''
+        },
+        localStorageSettingsConfig: [
+          {
+            id: 'traefik_ssh_private_key',
+            label: 'Traefik SSH Private Key',
+            description: 'Private key used for SSH/SCP interactions with TRAEFIK_REMOTE_HOST. Stored only in your browser.',
+            type: 'textarea',
+            placeholder: '-----BEGIN OPENSSH PRIVATE KEY-----\n...',
+            required: false
+          }
+        ],
+
+        // UI State
+        loading: {},
+        toastId: 0,
+        isMounted: false,
+        showLoading: false,
+        iconsInitialized: false,
+      };
+    },
+    computed: {
+      canCreate() {
+        return this.authInfo.isAdmin || this.authInfo.rights.includes('landings:create');
+      },
+      canUpdate() {
+        return this.authInfo.isAdmin || this.authInfo.rights.includes('landings:update');
+      },
+      canDelete() {
+        return this.authInfo.isAdmin || this.authInfo.rights.includes('landings:delete');
+      },
+      canDomains() {
+        return this.authInfo.isAdmin || this.authInfo.rights.includes('landings:domains');
+      },
+      allFilesCollapsed() {
+        if (!this.diffData?.diffs) return false;
+        return this.diffData.diffs.every((_, idx) => this.collapsedFiles[idx]);
+      }
+    },
+    async mounted() {
+      await this.$nextTick();
+      this.isMounted = true;
+      window.__toastDebug = {
+        add: (type = 'success', message = 'debug toast') => this.addToast(type, message, 5000),
+        clear: () => { this.toastStore = []; this.renderToasts(); },
+        list: () => (this.toastStore || []).map(t => ({ ...t }))
+      };
+      await this.loadOrganizations();
+      this.initCurrentOrganization();
+      await this.loadAuthInfo();
+      await this.loadLandings();
+      await this.loadAdminConfig();
+      await this.loadCloudflareStatus();
+      this.loadLocalSettings();
+      if (this.authInfo.isAdmin) {
+        await this.loadAllUsers();
+        await this.loadAvailableRights();
+      }
+      this.refreshIcons();
+    },
+    beforeUnmount() {
+      this.isMounted = false;
+    },
+    methods: {
+      ...moduleMixins,
+      refreshIcons() {
+        if (this.iconsInitialized) return;
+        if (!this.isMounted || !window.lucide?.createIcons) return;
+        this.iconsInitialized = true;
+        this.$nextTick(() => {
+          try { window.lucide.createIcons(); } catch (e) { console.warn('Lucide init skipped:', e?.message || e); }
+        });
+      },
+      closeDropdowns(e) {
+        if (!e.target.closest('.relative')) {
+          this.showOrgSwitcher = false;
+        }
+      }
+    },
+    watch: {
+      showSettingsModal(val) {
+        if (val && this.settingsTab === 'db') {
+          this.loadDbSettings();
+        }
+      },
+      settingsTab(val) {
+        if (val === 'db') {
+          this.loadDbSettings();
+        }
+      },
+      showAddModal(val) {
+        if (val) this.$nextTick(() => this.initAddEditor());
+      },
+      async showOrganizationsModal(val) {
+        if (val) {
+          await this.loadOrganizations();
+          if (this.authInfo.isAdmin) {
+            await this.loadAllUsers();
+          }
+        }
+      }
+    }
+  }).mount('#app');
+</script>
