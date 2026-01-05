@@ -43,7 +43,28 @@
 
         // Organizations Modal
         showOrganizationsModal: false,
-        newOrgName: '',
+        showSettingsModal: false,
+        settingsTab: 'local',
+        localSettings: {},
+        dbSettings: {
+          TRAEFIK_ENABLED: false,
+          TRAEFIK_REMOTE_HOST: '',
+          TRAEFIK_REMOTE_USER: '',
+          TRAEFIK_REMOTE_PORT: '22',
+          TRAEFIK_REMOTE_PATH: '',
+          SERVER_IP: ''
+        },
+        localStorageSettingsConfig: [
+          {
+            id: 'traefik_ssh_private_key',
+            label: 'Traefik SSH Private Key',
+            description: 'Private key used for SSH/SCP interactions with TRAEFIK_REMOTE_HOST. Stored only in your browser.',
+            type: 'textarea',
+            placeholder: '-----BEGIN OPENSSH PRIVATE KEY-----\n...',
+            required: false
+          }
+        ],
+        showOrgSwitcher: false,
         editingOrg: null,
         allUsers: [],
         newUserEmail: '',

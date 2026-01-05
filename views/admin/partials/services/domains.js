@@ -11,23 +11,39 @@
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         },
-        async publishDomain(landingId, domain) {
-          const res = await fetchImpl(`/api/landings/${landingId}/domains/${encodeURIComponent(domain)}/publish`, { method: 'POST' });
+        async publishDomain(landingId, domain, sshKey) {
+          const res = await fetchImpl(`/api/landings/${landingId}/domains/${encodeURIComponent(domain)}/publish`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sshKey })
+          });
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         },
-        async unpublishDomain(landingId, domain) {
-          const res = await fetchImpl(`/api/landings/${landingId}/domains/${encodeURIComponent(domain)}/unpublish`, { method: 'POST' });
+        async unpublishDomain(landingId, domain, sshKey) {
+          const res = await fetchImpl(`/api/landings/${landingId}/domains/${encodeURIComponent(domain)}/unpublish`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sshKey })
+          });
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         },
-        async publishLanding(landingId) {
-          const res = await fetchImpl(`/api/landings/${landingId}/publish`, { method: 'POST' });
+        async publishLanding(id, sshKey) {
+          const res = await fetchImpl(`/api/landings/${id}/publish`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sshKey })
+          });
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         },
-        async unpublishLanding(landingId) {
-          const res = await fetchImpl(`/api/landings/${landingId}/unpublish`, { method: 'POST' });
+        async unpublishLanding(id, sshKey) {
+          const res = await fetchImpl(`/api/landings/${id}/unpublish`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sshKey })
+          });
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         }

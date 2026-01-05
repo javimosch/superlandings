@@ -15,13 +15,21 @@
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         },
-        async publish() {
-          const res = await fetchImpl('/api/admin-config/publish', { method: 'POST' });
+        async publish(sshKey) {
+          const res = await fetchImpl('/api/admin-config/publish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sshKey })
+          });
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         },
-        async unpublish() {
-          const res = await fetchImpl('/api/admin-config/unpublish', { method: 'POST' });
+        async unpublish(sshKey) {
+          const res = await fetchImpl('/api/admin-config/unpublish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sshKey })
+          });
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         }

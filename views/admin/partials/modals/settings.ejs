@@ -1,0 +1,175 @@
+<!-- Settings Modal -->
+<div v-if="showSettingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-[60]">
+  <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+    <!-- Header -->
+    <div class="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 border-b flex justify-between items-center">
+      <h3 class="text-lg sm:text-xl font-semibold text-gray-900 flex items-center gap-2">
+        <i class="ti ti-settings text-blue-600"></i>
+        System Settings
+      </h3>
+      <button @click="showSettingsModal = false" class="text-gray-500 hover:text-gray-700">
+        <i class="ti ti-x w-6 h-6"></i>
+      </button>
+    </div>
+    
+    <!-- Tabs -->
+    <div class="flex border-b bg-gray-50">
+      <button 
+        @click="settingsTab = 'local'"
+        :class="['px-6 py-3 text-sm font-medium border-b-2 transition', settingsTab === 'local' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100']"
+      >
+        <i class="ti ti-device-floppy mr-2"></i> LocalStorage
+      </button>
+      <button 
+        @click="settingsTab = 'db'"
+        :class="['px-6 py-3 text-sm font-medium border-b-2 transition', settingsTab === 'db' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100']"
+      >
+        <i class="ti ti-server mr-2"></i> Deployment Config
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto p-4 sm:p-6">
+      <!-- LocalStorage Tab -->
+      <!-- ... (LocalStorage content remains same) ... -->
+      <div v-if="settingsTab === 'local'" class="space-y-6">
+        <div v-for="setting in localStorageSettingsConfig" :key="setting.id" class="space-y-2">
+          <label :for="setting.id" class="block text-sm font-semibold text-gray-700">
+            {{ setting.label }}
+            <span v-if="setting.required" class="text-red-500">*</span>
+          </label>
+          <p v-if="setting.description" class="text-xs text-gray-500 mb-2">{{ setting.description }}</p>
+          
+          <template v-if="setting.type === 'textarea'">
+            <textarea 
+              v-model="localSettings[setting.id]"
+              :id="setting.id"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono h-32"
+              :placeholder="setting.placeholder"
+            ></textarea>
+          </template>
+          
+          <template v-else-if="setting.type === 'password'">
+            <input 
+              v-model="localSettings[setting.id]"
+              type="password"
+              :id="setting.id"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              :placeholder="setting.placeholder"
+            >
+          </template>
+          
+          <template v-else>
+            <input 
+              v-model="localSettings[setting.id]"
+              type="text"
+              :id="setting.id"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              :placeholder="setting.placeholder"
+            >
+          </template>
+        </div>
+
+        <div v-if="localStorageSettingsConfig.length === 0" class="text-center py-8 text-gray-500">
+          <i class="ti ti-info-circle text-4xl mb-2 block"></i>
+          <p>No local settings configured.</p>
+        </div>
+      </div>
+
+      <!-- Deployment Config Tab -->
+      <div v-if="settingsTab === 'db'" class="space-y-8">
+        <div>
+          <h4 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="ti ti-route text-blue-600"></i>
+            Traefik Gateway Settings
+          </h4>
+          
+          <div class="space-y-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="block text-sm font-semibold text-gray-700">Enable Traefik</label>
+                <p class="text-xs text-gray-500">Enable or disable domain publishing via Traefik</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="dbSettings.TRAEFIK_ENABLED" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="space-y-1">
+                <label class="block text-sm font-semibold text-gray-700">Remote Host</label>
+                <input v-model="dbSettings.TRAEFIK_REMOTE_HOST" type="text" placeholder="e.g. 188.245.71.48" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+              </div>
+              <div class="space-y-1">
+                <label class="block text-sm font-semibold text-gray-700">Remote User</label>
+                <input v-model="dbSettings.TRAEFIK_REMOTE_USER" type="text" placeholder="e.g. root" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+              </div>
+              <div class="space-y-1">
+                <label class="block text-sm font-semibold text-gray-700">Remote Port</label>
+                <input v-model="dbSettings.TRAEFIK_REMOTE_PORT" type="text" placeholder="e.g. 22" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+              </div>
+              <div class="space-y-1">
+                <label class="block text-sm font-semibold text-gray-700">Internal Server IP</label>
+                <input v-model="dbSettings.SERVER_IP" type="text" placeholder="e.g. http://10.0.0.5:3000" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label class="block text-sm font-semibold text-gray-700">Remote Path</label>
+              <input v-model="dbSettings.TRAEFIK_REMOTE_PATH" type="text" placeholder="e.g. /data/coolify/proxy/dynamic" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 bg-blue-50 rounded-lg border border-blue-100 flex gap-3">
+          <i class="ti ti-info-circle text-blue-600 text-lg"></i>
+          <p class="text-xs text-blue-800">
+            These settings are stored securely on the server and applied to all deployments. 
+            Changing them will affect future domain publications.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 border-t flex justify-between items-center">
+      <div class="text-xs text-gray-500">
+        <span v-if="settingsTab === 'local'" class="flex items-center gap-1">
+          <i class="ti ti-shield-check text-green-600"></i>
+          Stored locally in your browser
+        </span>
+        <span v-if="settingsTab === 'db'" class="flex items-center gap-1">
+          <i class="ti ti-world text-blue-600"></i>
+          Shared server configuration
+        </span>
+      </div>
+      <div class="flex gap-3">
+        <button 
+          @click="showSettingsModal = false" 
+          class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 rounded-lg transition"
+        >
+          Cancel
+        </button>
+        <button 
+          v-if="settingsTab === 'local'"
+          @click="saveLocalSettings" 
+          class="px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+        >
+          <i class="ti ti-device-floppy"></i>
+          Save Local
+        </button>
+        <button 
+          v-if="settingsTab === 'db'"
+          @click="saveDbSettings" 
+          class="px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+          :disabled="loading.saveDbSettings"
+        >
+          <span v-if="loading.saveDbSettings" class="animate-spin mr-2"><i class="ti ti-loader-2"></i></span>
+          <i v-else class="ti ti-device-floppy"></i>
+          Save Shared Config
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -16,6 +16,7 @@ router.post('/:domain/publish', async (req, res) => {
 
   try {
     const { id, domain } = req.params;
+    const { sshKey } = req.body;
     const db = await readDB();
     
     const landing = db.landings.find(l => l.id === id);
@@ -37,7 +38,7 @@ router.post('/:domain/publish', async (req, res) => {
 
     domainObj.published = true;
     
-    const configFileName = await deployTraefikConfig(landing);
+    const configFileName = await deployTraefikConfig(landing, sshKey);
     landing.traefikConfigFile = configFileName;
     landing.published = landing.domains.some(d => d.published);
     
@@ -74,6 +75,7 @@ router.post('/:domain/unpublish', async (req, res) => {
 
   try {
     const { id, domain } = req.params;
+    const { sshKey } = req.body;
     const db = await readDB();
     
     const landing = db.landings.find(l => l.id === id);
@@ -98,10 +100,10 @@ router.post('/:domain/unpublish', async (req, res) => {
     const hasPublishedDomains = landing.domains.some(d => d.published);
     
     if (hasPublishedDomains) {
-      const configFileName = await deployTraefikConfig(landing);
+      const configFileName = await deployTraefikConfig(landing, sshKey);
       landing.traefikConfigFile = configFileName;
     } else {
-      await removeTraefikConfig(landing);
+      await removeTraefikConfig(landing, sshKey);
       landing.traefikConfigFile = '';
     }
     

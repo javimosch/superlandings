@@ -18,9 +18,18 @@ const migrationRouter = require('./routes/migration');
 const cloudflareRouter = require('./routes/cloudflare');
 const { domainStaticMiddleware, slugStaticMiddleware, serveLandingByDomain, serveLandingBySlug } = require('./routes/serve');
 
+// SaaSBackend integration
+const saasbackend = process.env.NODE_ENV === 'production'
+  ? require('saasbackend')
+  : require('./ref-saasbackend');
+
 // Initialize
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Set app locals for use in views
+app.locals.ADMIN_USERNAME = process.env.ADMIN_USERNAME;
+app.locals.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // Ensure data directories exist
 ensureDirectories();
@@ -28,6 +37,12 @@ ensureDirectories();
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// SaaSBackend Middleware
+app.use('/saas', saasbackend.middleware({
+  mongodbUri: process.env.MONGO_URI,
+  skipBodyParser: true
+}));
 
 const sessionTtlSeconds = parseInt(process.env.SESSION_TTL_SECONDS || `${24 * 60 * 60}`, 10);
 const sessionCookieMaxAgeMs = sessionTtlSeconds * 1000;

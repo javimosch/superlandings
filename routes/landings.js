@@ -392,6 +392,7 @@ router.delete('/:id', async (req, res) => {
 
   try {
     const { id } = req.params;
+    const sshKey = req.headers['x-ssh-key'];
     const db = await readDB();
     
     const landingIndex = db.landings.findIndex(l => l.id === id);
@@ -406,7 +407,7 @@ router.delete('/:id', async (req, res) => {
 
     if (landing.published) {
       try {
-        await removeTraefikConfig(landing);
+        await removeTraefikConfig(landing, sshKey);
         console.log(`✅ Traefik config removed`);
       } catch (error) {
         console.error(`⚠️  Warning: Could not remove Traefik config:`, error.message);

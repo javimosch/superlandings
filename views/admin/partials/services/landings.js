@@ -29,8 +29,11 @@
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         },
-        async remove(id) {
-          const res = await fetchImpl(`/api/landings/${id}`, { method: 'DELETE' });
+        async remove(id, sshKey) {
+          const res = await fetchImpl(`/api/landings/${id}`, {
+            method: 'DELETE',
+            headers: { 'X-SSH-Key': sshKey || '' }
+          });
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         },

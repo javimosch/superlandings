@@ -2,6 +2,7 @@ const express = require('express');
 const { migrateDomains, getAllDomainStrings } = require('../lib/db');
 const { readDB, writeDB } = require('../lib/store');
 const { deployAdminTraefikConfig, removeAdminTraefikConfig, validateTraefikEnv } = require('../lib/traefik');
+const { getTraefikSetting } = require('../lib/traefik-settings');
 
 const router = express.Router();
 
@@ -53,6 +54,7 @@ router.put('/domains', async (req, res) => {
 // Publish admin
 router.post('/publish', async (req, res) => {
   try {
+    const { sshKey } = req.body;
     const db = await readDB();
     
     if (!db.adminConfig) {
@@ -70,9 +72,10 @@ router.post('/publish', async (req, res) => {
     const domainStrings = db.adminConfig.domains.map(d => d.domain);
     console.log(`🚀 Publishing admin to domains: ${domainStrings.join(', ')}`);
 
-    if (process.env.TRAEFIK_ENABLED === 'true') {
-      validateTraefikEnv();
-      await deployAdminTraefikConfig(domainStrings);
+    const traefikEnabled = await getTraefikSetting('TRAEFIK_ENABLED');
+    if (traefikEnabled === true || traefikEnabled === 'true') {
+      await validateTraefikEnv();
+      await deployAdminTraefikConfig(domainStrings, sshKey);
     }
     
     db.adminConfig.published = true;
@@ -96,6 +99,7 @@ router.post('/publish', async (req, res) => {
 // Unpublish admin
 router.post('/unpublish', async (req, res) => {
   try {
+    const { sshKey } = req.body;
     const db = await readDB();
     
     if (!db.adminConfig || !db.adminConfig.published) {
@@ -108,8 +112,9 @@ router.post('/unpublish', async (req, res) => {
 
     const configFileName = db.adminConfig.traefikConfigFile || 'superlandings-admin.yml';
 
-    if (process.env.TRAEFIK_ENABLED === 'true') {
-      await removeAdminTraefikConfig(configFileName);
+    const traefikEnabled = await getTraefikSetting('TRAEFIK_ENABLED');
+    if (traefikEnabled === true || traefikEnabled === 'true') {
+      await removeAdminTraefikConfig(configFileName, sshKey);
     }
     
     db.adminConfig.published = false;

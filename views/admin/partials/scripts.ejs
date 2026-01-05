@@ -110,6 +110,29 @@
         previewContent: '',
         previewMode: 'modal', // 'modal' or 'tab'
         
+        // Settings Modal
+        showSettingsModal: false,
+        settingsTab: 'local',
+        localSettings: {},
+        dbSettings: {
+          TRAEFIK_ENABLED: false,
+          TRAEFIK_REMOTE_HOST: '',
+          TRAEFIK_REMOTE_USER: '',
+          TRAEFIK_REMOTE_PORT: '22',
+          TRAEFIK_REMOTE_PATH: '',
+          SERVER_IP: ''
+        },
+        localStorageSettingsConfig: [
+          {
+            id: 'traefik_ssh_private_key',
+            label: 'Traefik SSH Private Key',
+            description: 'Private key used for SSH/SCP interactions with TRAEFIK_REMOTE_HOST. Stored only in your browser.',
+            type: 'textarea',
+            placeholder: '-----BEGIN OPENSSH PRIVATE KEY-----\n...',
+            required: false
+          }
+        ],
+
         // UI State
         loading: {},
         toastId: 0,
@@ -152,6 +175,7 @@
       await this.loadLandings();
       await this.loadAdminConfig();
       await this.loadCloudflareStatus();
+      this.loadLocalSettings();
       if (this.authInfo.isAdmin) {
         await this.loadAllUsers();
         await this.loadAvailableRights();
@@ -891,7 +915,117 @@
       
       closePreviewModal() {
         this.showPreviewModal = false;
-        this.previewContent = '';
+      },
+      
+      // Settings Methods
+      loadLocalSettings() {
+        const settings = {};
+        this.localStorageSettingsConfig.forEach(config => {
+          settings[config.id] = localStorage.getItem(`sl_setting_${config.id}`) || '';
+        });
+        this.localSettings = settings;
+      },
+
+      async saveLocalSettings() {
+        this.localStorageSettingsConfig.forEach(config => {
+          localStorage.setItem(`sl_setting_${config.id}`, this.localSettings[config.id] || '');
+        });
+        this.showSuccess('Local settings saved!');
+        this.showSettingsModal = false;
+      },
+
+      // Shared DB Settings (SaasBackend Global Settings)
+      async loadDbSettings() {
+        this.loading.loadDbSettings = true;
+        try {
+          const keys = ['TRAEFIK_ENABLED', 'TRAEFIK_REMOTE_HOST', 'TRAEFIK_REMOTE_USER', 'TRAEFIK_REMOTE_PORT', 'TRAEFIK_REMOTE_PATH', 'SERVER_IP'];
+          // Use the app.locals provided by server.js
+          const auth = btoa('<%= ADMIN_USERNAME %>:<%= ADMIN_PASSWORD %>');
+          
+          const res = await fetch('/saas/api/admin/settings', {
+            headers: {
+              'Accept': 'application/json',
+              'Authorization': `Basic ${auth}`
+            }
+          });
+          
+          if (res.status === 401) {
+            this.showError('Unauthorized access to shared settings.');
+            return;
+          }
+
+          if (!res.ok) throw new Error('Failed to fetch settings');
+          const allSettings = await res.json();
+
+          keys.forEach(key => {
+            const setting = allSettings.find(s => s.key === key);
+            if (setting) {
+              if (key === 'TRAEFIK_ENABLED') {
+                this.dbSettings[key] = setting.value === 'true';
+              } else {
+                this.dbSettings[key] = setting.value;
+              }
+            }
+          });
+        } catch (err) {
+          console.error('Error loading DB settings:', err);
+          this.showError('Could not load shared settings');
+        } finally {
+          this.loading.loadDbSettings = false;
+        }
+      },
+
+      async saveDbSettings() {
+        this.loading.saveDbSettings = true;
+        try {
+          const auth = btoa('<%= ADMIN_USERNAME %>:<%= ADMIN_PASSWORD %>');
+          const headers = { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Basic ${auth}`
+          };
+
+          const keys = Object.keys(this.dbSettings);
+          
+          for (const key of keys) {
+            let value = this.dbSettings[key];
+            if (typeof value === 'boolean') value = String(value);
+
+            // Check if setting exists first
+            const checkRes = await fetch(`/saas/api/admin/settings/${key}`, { headers });
+            
+            if (checkRes.status === 404) {
+              await fetch('/saas/api/admin/settings', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                  key,
+                  value,
+                  type: key === 'TRAEFIK_ENABLED' ? 'boolean' : 'string',
+                  description: `Traefik setting: ${key}`
+                })
+              });
+            } else {
+              await fetch(`/saas/api/admin/settings/${key}`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify({ value })
+              });
+            }
+          }
+
+          this.showSuccess('Shared configuration updated successfully!');
+          this.showSettingsModal = false;
+        } catch (err) {
+          console.error('Error saving DB settings:', err);
+          this.showError('Failed to save shared settings: ' + err.message);
+        } finally {
+          this.loading.saveDbSettings = false;
+        }
+      },
+
+      getSetting(id) {
+        return localStorage.getItem(`sl_setting_${id}`) || '';
       },
       
       // Editors
@@ -926,6 +1060,16 @@
       }
     },
     watch: {
+      showSettingsModal(val) {
+        if (val && this.settingsTab === 'db') {
+          this.loadDbSettings();
+        }
+      },
+      settingsTab(val) {
+        if (val === 'db') {
+          this.loadDbSettings();
+        }
+      },
       showAddModal(val) {
         if (val) this.$nextTick(() => this.initAddEditor());
       },

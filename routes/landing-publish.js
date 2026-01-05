@@ -11,6 +11,7 @@ const router = express.Router({ mergeParams: true });
 router.post('/publish', async (req, res) => {
   try {
     const { id } = req.params;
+    const { sshKey } = req.body;
     const db = await readDB();
     
     const landing = db.landings.find(l => l.id === id);
@@ -29,7 +30,7 @@ router.post('/publish', async (req, res) => {
     const domainStrings = landing.domains.map(d => d.domain);
     console.log(`🚀 Publishing landing: ${landing.name} (${landing.slug}) to domains: ${domainStrings.join(', ')}`);
 
-    const configFileName = await deployTraefikConfig(landing);
+    const configFileName = await deployTraefikConfig(landing, sshKey);
     
     landing.published = true;
     landing.traefikConfigFile = configFileName;
@@ -66,6 +67,7 @@ router.post('/publish', async (req, res) => {
 router.post('/unpublish', async (req, res) => {
   try {
     const { id } = req.params;
+    const { sshKey } = req.body;
     const db = await readDB();
     
     const landing = db.landings.find(l => l.id === id);
@@ -81,7 +83,7 @@ router.post('/unpublish', async (req, res) => {
 
     landing.domains = migrateDomains(landing.domains || []).map(d => ({ ...d, published: false }));
 
-    await removeTraefikConfig(landing);
+    await removeTraefikConfig(landing, sshKey);
     
     landing.published = false;
     landing.traefikConfigFile = '';

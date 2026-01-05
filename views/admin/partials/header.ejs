@@ -45,8 +45,11 @@
         <button @click="showOrganizationsModal = true" class="px-2 sm:px-4 py-1 sm:py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition text-xs sm:text-sm font-medium whitespace-nowrap flex items-center gap-2">
           <i class="ti ti-building w-4 h-4"></i>
         </button>
-        <button @click="showAdminDomainsModal = true" class="px-2 sm:px-4 py-1 sm:py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition text-xs sm:text-sm font-medium whitespace-nowrap flex items-center gap-2">
+        <button @click="showSettingsModal = true" class="px-2 sm:px-4 py-1 sm:py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition text-xs sm:text-sm font-medium whitespace-nowrap flex items-center gap-2" title="System Settings">
           <i class="ti ti-settings w-4 h-4"></i>
+        </button>
+        <button @click="showAdminDomainsModal = true" class="px-2 sm:px-4 py-1 sm:py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition text-xs sm:text-sm font-medium whitespace-nowrap flex items-center gap-2" title="Admin Domains">
+          <i class="ti ti-world w-4 h-4"></i>
         </button>
       </template>
       
@@ -85,8 +88,11 @@
         <button @click="showOrganizationsModal = true; showMobileMenu = false" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs font-medium flex items-center gap-2 justify-center">
           <i class="ti ti-building w-4 h-4"></i> Organizations
         </button>
+        <button @click="showSettingsModal = true; showMobileMenu = false" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs font-medium flex items-center gap-2 justify-center">
+          <i class="ti ti-settings w-4 h-4"></i> Settings
+        </button>
         <button @click="showAdminDomainsModal = true; showMobileMenu = false" class="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded text-xs font-medium flex items-center gap-2 justify-center">
-          <i class="ti ti-settings w-4 h-4"></i> Admin
+          <i class="ti ti-world w-4 h-4"></i> Admin
         </button>
       </div>
       
