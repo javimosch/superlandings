@@ -1,7 +1,7 @@
 ref-*
 node_modules/
 data/
-.env
+.env*
 *.log
 tmp
 *.bak
