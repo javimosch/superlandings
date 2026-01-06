@@ -46,6 +46,15 @@
           const res = await fetchImpl(`/api/landings/${id}/cache/clear`, { method: 'POST' });
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
+        },
+        async aiEdit(id, prompt, currentContent) {
+          const res = await fetchImpl(`/api/landings/${id}/ai-edit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, currentContent })
+          });
+          const data = await res.json().catch(() => ({}));
+          return { ok: res.ok, data };
         }
       };
     }

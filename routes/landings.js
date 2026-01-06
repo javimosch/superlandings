@@ -5,7 +5,7 @@ const AdmZip = require('adm-zip');
 const { LANDINGS_DIR, migrateDomains, readDirectoryFilesSync } = require('../lib/db');
 const { readDB, writeDB, getEngine } = require('../lib/store');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
-const { generateTraefikYaml } = require('../lib/llm');
+const { generateTraefikYaml, editLandingContent } = require('../lib/llm');
 const { 
   createVersion, 
   getVersions, 
@@ -201,6 +201,38 @@ router.post('/', async (req, res) => {
     res.json(landing);
   } catch (error) {
     console.error('Error creating landing:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// AI Edit landing content
+router.post('/:id/ai-edit', async (req, res) => {
+  if (!req.adminAuth && !hasRight(req.currentUser, 'landings:update')) {
+    return res.status(403).json({ error: 'Missing permission' });
+  }
+
+  try {
+    const { id } = req.params;
+    const { prompt, currentContent } = req.body;
+    
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    const db = await readDB();
+    const landing = db.landings.find(l => l.id === id);
+    if (!landing) {
+      return res.status(404).json({ error: 'Landing not found' });
+    }
+
+    const modifiedHtml = await editLandingContent(prompt, currentContent, {
+      slug: landing.slug,
+      title: landing.name
+    });
+
+    res.json({ content: modifiedHtml });
+  } catch (error) {
+    console.error('Error in AI edit:', error);
     res.status(500).json({ error: error.message });
   }
 });

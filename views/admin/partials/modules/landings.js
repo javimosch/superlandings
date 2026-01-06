@@ -166,6 +166,7 @@
           if (this.editEditor) { this.editEditor.toTextArea(); this.editEditor = null; }
           if (this.editTraefikEditor) { this.editTraefikEditor.toTextArea(); this.editTraefikEditor = null; }
           this.traefikAiPrompt = '';
+          this.landingAiPrompt = '';
         },
 
         async deleteLanding(id) {
@@ -195,6 +196,28 @@
             this.showError('Error clearing cache: ' + err.message);
           } finally {
             this.loading = { ...this.loading, [loadingKey]: false };
+          }
+        },
+
+        async runAiEdit() {
+          if (!this.editingLanding || !this.landingAiPrompt) return;
+          this.generatingAi = true;
+          try {
+            const currentContent = this.editEditor ? this.editEditor.getValue() : this.editingLanding.content;
+            const { ok, data } = await landings.aiEdit(this.editingLanding.id, this.landingAiPrompt, currentContent);
+            if (!ok) throw new Error(data.error || 'AI generation failed');
+            
+            if (this.editEditor) {
+              this.editEditor.setValue(data.content);
+            } else {
+              this.editingLanding.content = data.content;
+            }
+            this.showSuccess('AI changes applied! Preview them before saving.');
+            this.landingAiPrompt = '';
+          } catch (err) {
+            this.showError('AI Edit error: ' + err.message);
+          } finally {
+            this.generatingAi = false;
           }
         },
 

@@ -43,8 +43,9 @@
 
         // Organizations Modal
         showOrganizationsModal: false,
-        newOrgName: '',
-        editingOrg: null,
+        traefikAiPrompt: '',
+        landingAiPrompt: '',
+        generatingAi: false,
         allUsers: [],
         newUserEmail: '',
         newUserPassword: '',
