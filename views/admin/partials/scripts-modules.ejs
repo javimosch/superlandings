@@ -227,7 +227,16 @@
             this.$refs.editEditorContainer.appendChild(textarea);
             this.editEditor = CodeMirror.fromTextArea(textarea, { 
               mode: 'htmlmixed', lineNumbers: true, theme: 'default', lineWrapping: true,
-              extraKeys: { "Ctrl-F": "findPersistent", "F3": "findNext", "Ctrl-G": "findNext", "Shift-Ctrl-G": "findPrev", "Shift-F3": "findPrev" }
+              extraKeys: { 
+                "Ctrl-F": "findPersistent", 
+                "F3": "findNext", 
+                "Ctrl-G": "findNext", 
+                "Shift-Ctrl-G": "findPrev", 
+                "Shift-F3": "findPrev",
+                "Ctrl-S": (cm) => {
+                  this.saveEdit(true);
+                }
+              }
             });
             this.editEditor.setSize('100%', '100%');
           }
@@ -245,7 +254,12 @@
                 mode: 'yaml',
                 lineNumbers: true,
                 theme: 'default',
-                lineWrapping: true
+                lineWrapping: true,
+                extraKeys: {
+                  "Ctrl-S": (cm) => {
+                    this.saveEdit(true);
+                  }
+                }
               });
               editor.setSize('100%', '100%');
               if (mode === 'add') this.addTraefikEditor = editor;
@@ -282,6 +296,44 @@
             this.showSuccess('Traefik configuration generated!');
           } catch (err) {
             this.showError('Error generating Traefik config: ' + err.message);
+          } finally {
+            this.generatingAi = false;
+          }
+        },
+
+        async runAiEdit() {
+          if (!this.landingAiPrompt) {
+            this.showError('Please describe what changes you want to make.');
+            return;
+          }
+          
+          // Get current content from editor or fallback to editingLanding.content
+          const currentContent = this.editEditor ? this.editEditor.getValue() : this.editingLanding.content;
+          
+          this.generatingAi = true;
+          try {
+            const res = await fetch(`/api/landings/${this.editingLanding.id}/ai-edit`, {
+              method: 'POST',
+              headers: { ...this.getHeaders(), 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                prompt: this.landingAiPrompt, 
+                currentContent: currentContent 
+              })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            
+            // Update editor with the modified content
+            if (this.editEditor) {
+              this.editEditor.setValue(data.content);
+            } else {
+              this.editingLanding.content = data.content;
+            }
+            
+            this.showSuccess('AI edit applied successfully!');
+            this.landingAiPrompt = ''; // Clear the prompt after successful edit
+          } catch (err) {
+            this.showError('Error with AI edit: ' + err.message);
           } finally {
             this.generatingAi = false;
           }

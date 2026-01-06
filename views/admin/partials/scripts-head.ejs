@@ -58,6 +58,9 @@
         showOrganizationsModal: false,
         newOrgName: '',
         editingOrg: null,
+        traefikAiPrompt: '',
+        landingAiPrompt: '',
+        generatingAi: false,
         allUsers: [],
         newUserEmail: '',
         newUserPassword: '',
@@ -117,6 +120,7 @@
         showPreviewModal: false,
         previewContent: '',
         previewMode: 'modal', // 'modal' or 'tab'
+        activeEditTab: 'code', // 'code' or 'preview'
         
         // Settings Modal
         showSettingsModal: false,
@@ -131,7 +135,8 @@
           SERVER_IP: '',
           TRAEFIK_SSH_KEY: '',
           LLM_OPENROUTER_API_KEY: '',
-          LLM_MODEL: ''
+          LLM_MODEL: '',
+          LLM_TEMPERATURE: '0.1'
         },
         dbSettingsFallbacks: {},
         localStorageSettingsConfig: [],
