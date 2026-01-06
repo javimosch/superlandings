@@ -100,6 +100,15 @@
               this.editingLanding = { ...landing };
             }
             this.showEditModal = true;
+            this.showEditVersionsSidebar = true; // Unfold by default
+            
+            // Critical: versionsModule is integrated into the same Alpine component scope.
+            // We need to set versionLanding and trigger loadVersions.
+            this.versionLanding = this.editingLanding;
+            if (typeof this.loadVersions === 'function') {
+              await this.loadVersions();
+            }
+
             this.$nextTick(() => { 
               if (landing.type === 'html') this.initEditEditor(); 
               if (landing.type === 'traefik-config') this.initTraefikEditor('edit');
@@ -214,10 +223,28 @@
             }
             this.showSuccess('AI changes applied! Preview them before saving.');
             this.landingAiPrompt = '';
+            await this.loadVersions(); // Refresh versions after AI edit might have triggered something (or for future proofing)
           } catch (err) {
             this.showError('AI Edit error: ' + err.message);
           } finally {
             this.generatingAi = false;
+          }
+        },
+
+        async switchToVersion(version) {
+          try {
+            if (!services.versions) throw new Error('Versions service missing');
+            const { ok, data } = await services.versions().preview(this.editingLanding.id, version.id);
+            if (!ok) throw new Error(data.error || 'Failed to load version content');
+            
+            if (this.editEditor) {
+              this.editEditor.setValue(data.content);
+            } else {
+              this.editingLanding.content = data.content;
+            }
+            this.showSuccess(`Switched to Version ${version.versionNumber}`);
+          } catch (err) {
+            this.showError('Error switching version: ' + err.message);
           }
         },
 

@@ -17,66 +17,169 @@
       </button>
     </div>
     
-    <div v-if="editingLanding.type === 'html'" class="flex-1 flex flex-col overflow-hidden p-3 sm:p-6">
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-2">AI Assistant - Describe your changes</label>
-        <div class="flex gap-2">
-          <textarea v-model="landingAiPrompt" rows="2" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" placeholder="e.g. Change the hero background to dark blue, make the headline bigger and add a 'Book Now' button in the navbar"></textarea>
-          <button @click="runAiEdit" type="button" :disabled="generatingAi" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400 text-sm font-semibold flex-shrink-0">
-            {{ generatingAi ? 'Thinking...' : '✨ AI Edit' }}
-          </button>
+    <div class="flex-1 flex overflow-hidden relative">
+      <!-- Main Content Area -->
+      <div class="flex-1 flex flex-col min-w-0">
+        <div v-if="editingLanding.type === 'html'" class="flex-1 flex flex-col overflow-hidden p-3 sm:p-6">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">AI Assistant - Describe your changes</label>
+            <div class="flex gap-2">
+              <textarea v-model="landingAiPrompt" rows="2" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" placeholder="e.g. Change the hero background to dark blue, make the headline bigger and add a 'Book Now' button in the navbar"></textarea>
+              <button @click="runAiEdit" type="button" :disabled="generatingAi" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400 text-sm font-semibold flex-shrink-0">
+                <span v-if="generatingAi" class="flex items-center gap-2">
+                  <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Thinking...
+                </span>
+                <span v-else>✨ AI Edit</span>
+              </button>
+            </div>
+          </div>
+          <div class="flex-1 border border-gray-300 rounded-lg overflow-hidden relative">
+            <div ref="editEditorContainer" class="h-full w-full"></div>
+            <!-- Sidebar Toggle Button -->
+            <button 
+              @click="showEditVersionsSidebar = !showEditVersionsSidebar"
+              class="absolute top-2 right-2 z-10 p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+              title="Toggle Version History"
+            >
+              <i :class="['ti', showEditVersionsSidebar ? 'ti-layout-sidebar-right-collapse' : 'ti-history']"></i>
+            </button>
+          </div>
+        </div>
+
+        <div v-if="editingLanding.type === 'traefik-config'" class="flex-1 flex flex-col overflow-hidden p-3 sm:p-6">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">AI Assistant - Describe your config</label>
+            <div class="flex gap-2">
+              <textarea v-model="traefikAiPrompt" rows="2" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g. Reverse proxy /api to 10.0.0.5:8080 and redirect /old to /new"></textarea>
+              <button @click="generateTraefikWithAi('edit')" type="button" :disabled="generatingAi" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400">
+                {{ generatingAi ? 'Generating...' : '✨ Generate' }}
+              </button>
+            </div>
+          </div>
+          <div class="flex-1 border border-gray-300 rounded-lg overflow-hidden relative">
+            <div ref="editTraefikEditorContainer" class="h-full w-full"></div>
+            <!-- Sidebar Toggle Button -->
+            <button 
+              @click="showEditVersionsSidebar = !showEditVersionsSidebar"
+              class="absolute top-2 right-2 z-10 p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+              title="Toggle Version History"
+            >
+              <i :class="['ti', showEditVersionsSidebar ? 'ti-layout-sidebar-right-collapse' : 'ti-history']"></i>
+            </button>
+          </div>
+        </div>
+
+        <div v-if="editingLanding.type === 'ejs'" class="p-3 sm:p-6 space-y-4 flex-1 overflow-y-auto">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Upload EJS Files</label>
+            <div class="flex justify-between items-center mb-2">
+              <p class="text-xs text-gray-500">Select one or multiple individual .ejs files.</p>
+              <button 
+                @click="showEditVersionsSidebar = !showEditVersionsSidebar"
+                class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+                title="Toggle Version History"
+              >
+                <i :class="['ti', showEditVersionsSidebar ? 'ti-layout-sidebar-right-collapse' : 'ti-history']"></i>
+              </button>
+            </div>
+            <input ref="editEjsFileInput" type="file" :multiple="true" accept=".ejs,.html" @change="handleEditEjsFilesChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+
+            <div class="my-4 border-t border-gray-200"></div>
+
+            <label class="block text-sm font-medium text-gray-700 mb-2">Upload EJS Template as ZIP file</label>
+            <input ref="editEjsZipInput" type="file" accept=".zip" @change="handleEditEjsZipChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <p class="mt-1 text-sm text-gray-500">Upload a .zip archive containing your index.ejs (main template) and any related .ejs partials or folders.</p>
+
+            <div v-if="editSelectedEjsFiles.length > 0" class="mt-2 text-sm text-gray-600">
+              Selected EJS Files: {{ editSelectedEjsFiles.map(f => f.name).join(', ') }}
+            </div>
+            <div v-if="editSelectedEjsZip" class="mt-2 text-sm text-gray-600">
+              Selected ZIP File: {{ editSelectedEjsZip.name }}
+            </div>
+          </div>
+        </div>
+
+        <div v-if="editingLanding.type === 'virtual'" class="p-3 sm:p-6 space-y-4 flex-1 overflow-y-auto">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Upload New Folder Content</label>
+            <div class="flex justify-between items-center mb-2">
+              <p class="text-xs text-gray-500">Select a folder to replace current content. Must include an <code>index.html</code> at the root.</p>
+              <button 
+                @click="showEditVersionsSidebar = !showEditVersionsSidebar"
+                class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
+                title="Toggle Version History"
+              >
+                <i :class="['ti', showEditVersionsSidebar ? 'ti-layout-sidebar-right-collapse' : 'ti-history']"></i>
+              </button>
+            </div>
+            <input ref="editVirtualFolderInput" type="file" webkitdirectory directory multiple @change="handleEditVirtualFilesChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <div v-if="editSelectedVirtualFiles.length > 0" class="mt-2 text-sm text-green-600 font-medium">
+              📁 {{ editSelectedVirtualFiles.length }} files selected for update
+            </div>
+          </div>
         </div>
       </div>
-      <div class="flex-1 border border-gray-300 rounded-lg overflow-hidden">
-        <div ref="editEditorContainer" class="h-full w-full"></div>
-      </div>
-    </div>
 
-    <div v-if="editingLanding.type === 'traefik-config'" class="flex-1 flex flex-col overflow-hidden p-3 sm:p-6">
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-2">AI Assistant - Describe your config</label>
-        <div class="flex gap-2">
-          <textarea v-model="traefikAiPrompt" rows="2" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g. Reverse proxy /api to 10.0.0.5:8080 and redirect /old to /new"></textarea>
-          <button @click="generateTraefikWithAi('edit')" type="button" :disabled="generatingAi" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400">
-            {{ generatingAi ? 'Generating...' : '✨ Generate' }}
-          </button>
+      <!-- Foldable Versions Sidebar -->
+      <transition
+        enter-active-class="transition ease-out duration-300"
+        enter-from-class="transform translate-x-full"
+        enter-to-class="transform translate-x-0"
+        leave-active-class="transition ease-in duration-300"
+        leave-from-class="transform translate-x-0"
+        leave-to-class="transform translate-x-full"
+      >
+        <div v-if="showEditVersionsSidebar" class="w-80 border-l bg-gray-50 flex flex-col h-full shadow-lg z-20 overflow-hidden">
+          <div class="p-4 border-b bg-white flex justify-between items-center">
+            <h4 class="font-semibold text-gray-900 flex items-center gap-2">
+              <i class="ti ti-history text-blue-600"></i>
+              History
+            </h4>
+            <button @click="showEditVersionsSidebar = false" class="text-gray-400 hover:text-gray-600">
+              <i class="ti ti-x"></i>
+            </button>
+          </div>
+          <div class="flex-1 overflow-y-auto p-4 space-y-3">
+            <div v-if="loading.versions" class="flex flex-col items-center justify-center h-32 text-gray-500">
+              <div class="animate-spin mb-2"><i class="ti ti-loader-2 text-2xl"></i></div>
+              <p class="text-xs">Loading history...</p>
+            </div>
+            <div v-else-if="versions.length === 0" class="text-center py-8 text-gray-500">
+              <p class="text-sm">No versions found</p>
+            </div>
+            <div 
+              v-for="(version, index) in versions" 
+              :key="version.id"
+              class="bg-white border rounded-lg p-3 hover:border-blue-300 transition-all cursor-pointer group relative"
+              :class="{'ring-2 ring-blue-500 border-transparent': version.id === editingLanding.currentVersionId}"
+              @click="switchToVersion(version)"
+            >
+              <div class="flex justify-between items-start mb-1">
+                <span class="text-[10px] font-bold px-1.5 py-0.5 bg-gray-100 rounded uppercase">V{{ version.versionNumber }}</span>
+                <span class="text-[10px] text-gray-400">{{ formatVersionDate(version.createdAt) }}</span>
+              </div>
+              <p class="text-xs text-gray-700 line-clamp-2 mb-2">
+                {{ version.description || 'Auto-saved version' }}
+              </p>
+              <div class="flex flex-wrap gap-1">
+                <span v-if="index === 0" class="text-[9px] px-1 py-0.5 bg-blue-100 text-blue-600 rounded">Current</span>
+                <span v-if="version.description?.includes('AI')" class="text-[9px] px-1 py-0.5 bg-purple-100 text-purple-600 rounded">✨ AI</span>
+              </div>
+              <!-- Hover Overlay with Switch Icon -->
+              <div class="absolute inset-0 bg-blue-600 bg-opacity-0 group-hover:bg-opacity-5 transition-all flex items-center justify-center rounded-lg">
+                <i class="ti ti-arrow-back-up text-blue-600 opacity-0 group-hover:opacity-100 transform scale-0 group-hover:scale-110 transition-all text-xl"></i>
+              </div>
+            </div>
+          </div>
+          <div class="p-3 bg-gray-100 border-t text-[10px] text-gray-500">
+            Click a version to restore its content to the editor. Use <strong>Save Changes</strong> to persist.
+          </div>
         </div>
-      </div>
-      <div class="flex-1 border border-gray-300 rounded-lg overflow-hidden">
-        <div ref="editTraefikEditorContainer" class="h-full w-full"></div>
-      </div>
-    </div>
-
-    <div v-if="editingLanding.type === 'ejs'" class="p-3 sm:p-6 space-y-4 flex-1 overflow-y-auto">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Upload EJS Files</label>
-        <input ref="editEjsFileInput" type="file" :multiple="true" accept=".ejs,.html" @change="handleEditEjsFilesChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-        <p class="mt-1 text-sm text-gray-500">Select one or multiple individual .ejs files.</p>
-
-        <div class="my-4 border-t border-gray-200"></div>
-
-        <label class="block text-sm font-medium text-gray-700 mb-2">Upload EJS Template as ZIP file</label>
-        <input ref="editEjsZipInput" type="file" accept=".zip" @change="handleEditEjsZipChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-        <p class="mt-1 text-sm text-gray-500">Upload a .zip archive containing your index.ejs (main template) and any related .ejs partials or folders.</p>
-
-        <div v-if="editSelectedEjsFiles.length > 0" class="mt-2 text-sm text-gray-600">
-          Selected EJS Files: {{ editSelectedEjsFiles.map(f => f.name).join(', ') }}
-        </div>
-        <div v-if="editSelectedEjsZip" class="mt-2 text-sm text-gray-600">
-          Selected ZIP File: {{ editSelectedEjsZip.name }}
-        </div>
-      </div>
-    </div>
-
-    <div v-if="editingLanding.type === 'virtual'" class="p-3 sm:p-6 space-y-4 flex-1 overflow-y-auto">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-2">Upload New Folder Content</label>
-        <input ref="editVirtualFolderInput" type="file" webkitdirectory directory multiple @change="handleEditVirtualFilesChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-        <p class="mt-1 text-sm text-gray-500">Select a folder to replace current content. Must include an <code>index.html</code> at the root.</p>
-        <div v-if="editSelectedVirtualFiles.length > 0" class="mt-2 text-sm text-green-600 font-medium">
-          📁 {{ editSelectedVirtualFiles.length }} files selected for update
-        </div>
-      </div>
+      </transition>
     </div>
 
     <div class="px-3 sm:px-6 py-3 sm:py-4 bg-gray-50 border-t flex gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">

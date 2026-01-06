@@ -43,6 +43,7 @@
 
         // Organizations Modal
         showOrganizationsModal: false,
+        showEditVersionsSidebar: false,
         traefikAiPrompt: '',
         landingAiPrompt: '',
         generatingAi: false,
