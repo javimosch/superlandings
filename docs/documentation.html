@@ -11,6 +11,41 @@
     <!-- DaisyUI CDN -->
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
     
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Prism.js for code highlighting -->
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    
+    <style>
+        .prose {
+            max-width: none;
+        }
+        .prose pre {
+            background-color: #1a202c;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1.5rem 0;
+        }
+        .prose code {
+            color: #e2e8f0;
+            background-color: transparent;
+            padding: 0;
+        }
+        .prose h1 { color: #1a202c; font-weight: 800; font-size: 2.25rem; margin-bottom: 2rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 1rem; }
+        .prose h2 { color: #2d3748; font-weight: 700; font-size: 1.875rem; margin-top: 2.5rem; margin-bottom: 1.25rem; border-bottom: 1px solid #edf2f7; padding-bottom: 0.5rem; }
+        .prose h3 { color: #4a5568; font-weight: 600; font-size: 1.5rem; margin-top: 2rem; margin-bottom: 1rem; }
+        .prose p { margin-bottom: 1.25rem; line-height: 1.75; color: #4a5568; }
+        .prose ul, .prose ol { margin-bottom: 1.25rem; padding-left: 1.5rem; }
+        .prose li { margin-bottom: 0.5rem; color: #4a5568; }
+        .prose a { color: #3b82f6; text-decoration: underline; }
+        .prose table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+        .prose th, .prose td { border: 1px solid #e2e8f0; padding: 0.75rem; text-align: left; }
+        .prose th { background-color: #f8fafc; font-weight: 600; }
+    </style>
+    
     <!-- Custom Tailwind Config -->
     <script>
         tailwind.config = {
@@ -261,7 +296,70 @@
                 <section id="api-reference" class="bg-white rounded-lg shadow-md p-8 mb-8">
                     <h2 class="text-3xl font-bold text-gray-800 mb-6">API Reference</h2>
                     
-                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Authentication</h3>
+                    <div class="grid md:grid-cols-2 gap-4 mb-8">
+                        <a href="features/user-rbac-system.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">👤 User & RBAC System</h3>
+                            <p class="text-sm text-gray-600">Authentication, user management, and organization rights.</p>
+                        </a>
+                        <a href="features/organizations.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">🏢 Organization Management</h3>
+                            <p class="text-sm text-gray-600">Multi-tenancy and organization-scoped access.</p>
+                        </a>
+                        <a href="features/landings-api.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">🚀 Landing Pages API</h3>
+                            <p class="text-sm text-gray-600">Full lifecycle management for HTML, EJS, and Virtual landings.</p>
+                        </a>
+                        <a href="features/cloudflare-integration.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">☁️ Cloudflare Integration</h3>
+                            <p class="text-sm text-gray-600">Automated DNS configuration and SSL management.</p>
+                        </a>
+                        <a href="features/versions-snapshots.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">🕒 Versions & Snapshots</h3>
+                            <p class="text-sm text-gray-600">Automated snapshots, rollbacks, and content diffing.</p>
+                        </a>
+                        <a href="features/publishing-traefik.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">🌐 Publishing & Traefik</h3>
+                            <p class="text-sm text-gray-600">Dynamic routing and SSH-based deployment workflow.</p>
+                        </a>
+                        <a href="features/audit-logs.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">📋 Audit Logging</h3>
+                            <p class="text-sm text-gray-600">Complete forensic trail of all administrative actions.</p>
+                        </a>
+                        <a href="features/admin-ui-editor.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">🛠️ Admin UI & Editor</h3>
+                            <p class="text-sm text-gray-600">Integrated code editor, live previews, and modal workflow.</p>
+                        </a>
+                        <a href="features/traefik-ai-config.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">🤖 Traefik & AI Config</h3>
+                            <p class="text-sm text-gray-600">AI-powered YAML generation and global Traefik settings.</p>
+                        </a>
+                        <a href="features/infrastructure-maintenance.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">🏗️ Infrastructure & Maintenance</h3>
+                            <p class="text-sm text-gray-600">Serving logic, migration system, and Docker configuration.</p>
+                        </a>
+                        <a href="features/persistence-storage.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">💾 Persistence & Storage</h3>
+                            <p class="text-sm text-gray-600">JSON and MongoDB engines with automatic synchronization.</p>
+                        </a>
+                        <a href="features/api-auth-security.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">🔐 API Auth & Security</h3>
+                            <p class="text-sm text-gray-600">RBAC, session management, and SSH deployment security.</p>
+                        </a>
+                        <a href="features/developer-onboarding.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">👨‍💻 Developer Onboarding</h3>
+                            <p class="text-sm text-gray-600">Project architecture, environment setup, and contribution guide.</p>
+                        </a>
+                        <a href="features/architecture-flow.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">🏗️ Architecture & Flow</h3>
+                            <p class="text-sm text-gray-600">System components, data flows, and architecture diagrams.</p>
+                        </a>
+                        <a href="features/multi-file-virtual-landings.md" class="block p-4 border border-gray-200 rounded-lg hover:border-primary-500 hover:shadow-md transition">
+                            <h3 class="font-bold text-primary-600 mb-1">📂 Multi-File & Virtual Landings</h3>
+                            <p class="text-sm text-gray-600">Handling complex static sites, folder structures, and virtual mirroring.</p>
+                        </a>
+                    </div>
+
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Core Endpoints</h3>
                     <p class="text-gray-600 mb-4">All API endpoints require session authentication. Login via the admin panel to establish a session.</p>
                     
                     <h3 class="text-xl font-semibold text-gray-700 mb-4">Endpoints</h3>
@@ -375,6 +473,37 @@ services:
         </div>
     </footer>
 
+    <!-- Markdown Preview Modal -->
+    <div id="md-modal" class="fixed inset-0 z-[100] hidden overflow-hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeMdModal()"></div>
+        <div class="absolute inset-4 md:inset-10 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 bg-primary-600 rounded flex items-center justify-center text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                    </div>
+                    <h3 id="md-modal-title" class="text-lg font-bold text-gray-800">Feature Documentation</h3>
+                </div>
+                <button onclick="closeMdModal()" class="p-2 hover:bg-gray-200 rounded-full transition text-gray-500">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div class="flex-1 overflow-y-auto p-6 md:p-12">
+                <div id="md-content" class="prose max-w-4xl mx-auto">
+                    <div class="flex items-center justify-center py-20">
+                        <span class="loading loading-spinner loading-lg text-primary"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Smooth scrolling for navigation links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -387,6 +516,69 @@ services:
                         block: 'start'
                     });
                 }
+            });
+        });
+
+        // Markdown Rendering Logic
+        async function openMdModal(url, title) {
+            const modal = document.getElementById('md-modal');
+            const content = document.getElementById('md-content');
+            const modalTitle = document.getElementById('md-modal-title');
+            
+            modalTitle.innerText = title;
+            content.innerHTML = `
+                <div class="flex items-center justify-center py-20">
+                    <span class="loading loading-spinner loading-lg text-primary"></span>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to fetch documentation');
+                const markdown = await response.text();
+                
+                // Configure marked to use Prism for highlighting
+                marked.setOptions({
+                    highlight: function(code, lang) {
+                        if (Prism.languages[lang]) {
+                            return Prism.highlight(code, Prism.languages[lang], lang);
+                        }
+                        return code;
+                    }
+                });
+
+                content.innerHTML = marked.parse(markdown);
+                
+                // Trigger Prism highlighting for newly added content
+                Prism.highlightAllUnder(content);
+            } catch (err) {
+                content.innerHTML = `
+                    <div class="alert alert-error">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>Error loading documentation: ${err.message}</span>
+                    </div>
+                `;
+            }
+        }
+
+        function closeMdModal() {
+            const modal = document.getElementById('md-modal');
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // Intercept feature links
+        document.addEventListener('DOMContentLoaded', () => {
+            const featureLinks = document.querySelectorAll('a[href^="features/"]');
+            featureLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const url = link.getAttribute('href');
+                    const title = link.querySelector('h3').innerText;
+                    openMdModal(url, title);
+                });
             });
         });
 
