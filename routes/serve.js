@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { LANDINGS_DIR, migrateDomains } = require('../lib/db');
 const { readDB, getEngine } = require('../lib/store');
-const { getVersions, restoreVersionToDisk } = require('../lib/versions');
+const { getVersions, restoreVersionToDisk, getLandingFsDir } = require('../lib/versions');
 
 const router = express.Router();
 
@@ -15,13 +15,14 @@ async function domainStaticMiddleware(req, res, next) {
   const db = await readDB();
   
   const landing = db.landings.find(l => 
-    l.published && l.type === 'static' && l.domains && migrateDomains(l.domains).some(d =>
+    l.published && (l.type === 'static' || l.type === 'virtual') && l.domains && migrateDomains(l.domains).some(d =>
       d.domain === host || d.domain === host.replace(/:\d+$/, '')
     )
   );
   
   if (landing) {
-    express.static(path.join(LANDINGS_DIR, landing.slug))(req, res, next);
+    const landingDir = getLandingFsDir(landing);
+    express.static(landingDir)(req, res, next);
   } else {
     next();
   }
@@ -33,8 +34,9 @@ async function slugStaticMiddleware(req, res, next) {
   const db = await readDB();
   const landing = db.landings.find(l => l.slug === slug);
   
-  if (landing && landing.type === 'static') {
-    express.static(path.join(LANDINGS_DIR, slug))(req, res, next);
+  if (landing && (landing.type === 'static' || landing.type === 'virtual')) {
+    const landingDir = getLandingFsDir(landing);
+    express.static(landingDir)(req, res, next);
   } else {
     next();
   }
@@ -56,14 +58,14 @@ async function serveLandingByDomain(req, res, next) {
     
     if (!landing) return next();
 
-    const landingDir = path.join(LANDINGS_DIR, landing.slug);
+    const landingDir = getLandingFsDir(landing);
 
     // Disable caching for landing pages
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
     
-    if (landing.type === 'html' || landing.type === 'static') {
+    if (landing.type === 'html' || landing.type === 'static' || landing.type === 'virtual') {
       const indexPath = await ensureLandingContent(landing);
       return res.sendFile(indexPath);
     } else if (landing.type === 'ejs') {
@@ -91,7 +93,7 @@ async function serveLandingBySlug(req, res) {
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
     
-    if (landing.type === 'html' || landing.type === 'static') {
+    if (landing.type === 'html' || landing.type === 'static' || landing.type === 'virtual') {
       const indexPath = await ensureLandingContent(landing);
       res.sendFile(indexPath);
     } else if (landing.type === 'ejs') {
@@ -105,18 +107,12 @@ async function serveLandingBySlug(req, res) {
 
 // Ensure landing content exists on disk; if missing, restore from latest/current version
 async function ensureLandingContent(landing) {
-  const landingDir = path.join(LANDINGS_DIR, landing.slug);
+  const landingDir = getLandingFsDir(landing);
   const indexPath = path.join(landingDir, 'index.html');
 
   if (fs.existsSync(indexPath)) return indexPath;
 
-  if (getEngine() === 'mongo' && landing.type === 'html' && typeof landing.content === 'string') {
-    fs.mkdirSync(landingDir, { recursive: true });
-    fs.writeFileSync(indexPath, landing.content);
-    return indexPath;
-  }
-
-  // Try to restore from current version first, then walk other versions
+  // 1. Try to restore from versions first (most reliable source of truth)
   const versions = await getVersions(landing.id);
   const candidates = [];
   if (landing.currentVersionId) candidates.push(landing.currentVersionId);
@@ -133,14 +129,34 @@ async function ensureLandingContent(landing) {
     }
   }
 
-  if (!restored) {
-    console.warn(`⚠️  Falling back to placeholder for ${landing.slug}; no restorable version found`);
-    fs.mkdirSync(landingDir, { recursive: true });
-    fs.writeFileSync(
-      indexPath,
-      `<html><body><h1>Landing content missing</h1><p>The content for "${landing.slug}" could not be restored. Please re-upload or republish.</p></body></html>`
-    );
+  if (restored) return indexPath;
+
+  // 2. Fallback to landing content/files if no versions found (legacy or initial creation)
+  if (getEngine() === 'mongo') {
+    if (landing.type === 'html' && typeof landing.content === 'string') {
+      fs.mkdirSync(landingDir, { recursive: true });
+      fs.writeFileSync(indexPath, landing.content);
+      return indexPath;
+    }
+
+    if (landing.type === 'virtual' && Array.isArray(landing.files)) {
+      fs.mkdirSync(landingDir, { recursive: true });
+      for (const file of landing.files) {
+        const filePath = path.join(landingDir, file.path);
+        fs.mkdirSync(path.dirname(filePath), { recursive: true });
+        fs.writeFileSync(filePath, file.content);
+      }
+      if (fs.existsSync(indexPath)) return indexPath;
+    }
   }
+
+  // 3. Last resort: placeholder
+  console.warn(`⚠️  Falling back to placeholder for ${landing.slug}; no restorable version or content found`);
+  fs.mkdirSync(landingDir, { recursive: true });
+  fs.writeFileSync(
+    indexPath,
+    `<html><body><h1>Landing content missing</h1><p>The content for "${landing.slug}" could not be restored. Please re-upload or republish.</p></body></html>`
+  );
 
   return indexPath;
 }

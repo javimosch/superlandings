@@ -28,7 +28,7 @@
       this.loading[loadingKey] = true;
       try {
         if (!domains) throw new Error('Domains service missing');
-        const sshKey = this.getSetting('traefik_ssh_private_key');
+        const sshKey = this.dbSettings.TRAEFIK_SSH_KEY;
         const { ok, data } = await domains.publishDomain(this.editingDomains.id, domain, sshKey);
         if (!ok) throw new Error(data.error || 'Failed to publish domain');
         this.showSuccess(data.message);
@@ -47,7 +47,7 @@
       this.loading[loadingKey] = true;
       try {
         if (!domains) throw new Error('Domains service missing');
-        const sshKey = this.getSetting('traefik_ssh_private_key');
+        const sshKey = this.dbSettings.TRAEFIK_SSH_KEY;
         const { ok, data } = await domains.unpublishDomain(this.editingDomains.id, domain, sshKey);
         if (!ok) throw new Error(data.error || 'Failed to unpublish domain');
         this.showSuccess(data.message);
@@ -87,7 +87,7 @@
           this.loading[id] = true;
           try {
             if (!domains) throw new Error('Domains service missing');
-            const sshKey = this.getSetting('traefik_ssh_private_key');
+            const sshKey = this.dbSettings.TRAEFIK_SSH_KEY;
             const { ok, data } = await domains.publishLanding(id, sshKey);
             if (!ok) throw new Error(data.error || 'Failed to publish');
             this.showSuccess(data.message);
@@ -103,7 +103,7 @@
           this.loading[id] = true;
           try {
             if (!domains) throw new Error('Domains service missing');
-            const sshKey = this.getSetting('traefik_ssh_private_key');
+            const sshKey = this.dbSettings.TRAEFIK_SSH_KEY;
             const { ok, data } = await domains.unpublishLanding(id, sshKey);
             if (!ok) throw new Error(data.error || 'Failed to unpublish');
             this.showSuccess(data.message);
@@ -141,7 +141,7 @@
           this.loading.admin = true;
           try {
             if (!adminConfig) throw new Error('AdminConfig service missing');
-            const sshKey = this.getSetting('traefik_ssh_private_key');
+            const sshKey = this.dbSettings.TRAEFIK_SSH_KEY;
             const { ok, data } = await adminConfig.publish(sshKey);
             if (!ok) throw new Error(data.error || 'Failed to publish admin');
             this.showSuccess(data.message);
@@ -157,7 +157,7 @@
           this.loading.admin = true;
           try {
             if (!adminConfig) throw new Error('AdminConfig service missing');
-            const sshKey = this.getSetting('traefik_ssh_private_key');
+            const sshKey = this.dbSettings.TRAEFIK_SSH_KEY;
             const { ok, data } = await adminConfig.unpublish(sshKey);
             if (!ok) throw new Error(data.error || 'Failed to unpublish admin');
             this.showSuccess(data.message);

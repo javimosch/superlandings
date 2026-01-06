@@ -15,16 +15,16 @@
     <!-- Tabs -->
     <div class="flex border-b bg-gray-50">
       <button 
-        @click="settingsTab = 'local'"
-        :class="['px-6 py-3 text-sm font-medium border-b-2 transition', settingsTab === 'local' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100']"
-      >
-        <i class="ti ti-device-floppy mr-2"></i> LocalStorage
-      </button>
-      <button 
         @click="settingsTab = 'db'"
         :class="['px-6 py-3 text-sm font-medium border-b-2 transition', settingsTab === 'db' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100']"
       >
         <i class="ti ti-server mr-2"></i> Deployment Config
+      </button>
+      <button 
+        @click="settingsTab = 'local'"
+        :class="['px-6 py-3 text-sm font-medium border-b-2 transition', settingsTab === 'local' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100']"
+      >
+        <i class="ti ti-device-floppy mr-2"></i> LocalStorage
       </button>
     </div>
 
@@ -89,6 +89,9 @@
               <div>
                 <label class="block text-sm font-semibold text-gray-700">Enable Traefik</label>
                 <p class="text-xs text-gray-500">Enable or disable domain publishing via Traefik</p>
+                <p v-if="dbSettingsFallbacks.TRAEFIK_ENABLED !== undefined" class="mt-1 text-[10px] text-gray-400 italic">
+                  Fallback: {{ dbSettingsFallbacks.TRAEFIK_ENABLED }} (used if empty)
+                </p>
               </div>
               <label class="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" v-model="dbSettings.TRAEFIK_ENABLED" class="sr-only peer">
@@ -100,24 +103,84 @@
               <div class="space-y-1">
                 <label class="block text-sm font-semibold text-gray-700">Remote Host</label>
                 <input v-model="dbSettings.TRAEFIK_REMOTE_HOST" type="text" placeholder="e.g. 188.245.71.48" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                <p v-if="dbSettingsFallbacks.TRAEFIK_REMOTE_HOST" class="text-[10px] text-gray-400 italic">
+                  Fallback: {{ dbSettingsFallbacks.TRAEFIK_REMOTE_HOST }} (used if empty)
+                </p>
               </div>
               <div class="space-y-1">
                 <label class="block text-sm font-semibold text-gray-700">Remote User</label>
                 <input v-model="dbSettings.TRAEFIK_REMOTE_USER" type="text" placeholder="e.g. root" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                <p v-if="dbSettingsFallbacks.TRAEFIK_REMOTE_USER" class="text-[10px] text-gray-400 italic">
+                  Fallback: {{ dbSettingsFallbacks.TRAEFIK_REMOTE_USER }} (used if empty)
+                </p>
               </div>
               <div class="space-y-1">
                 <label class="block text-sm font-semibold text-gray-700">Remote Port</label>
                 <input v-model="dbSettings.TRAEFIK_REMOTE_PORT" type="text" placeholder="e.g. 22" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                <p v-if="dbSettingsFallbacks.TRAEFIK_REMOTE_PORT" class="text-[10px] text-gray-400 italic">
+                  Fallback: {{ dbSettingsFallbacks.TRAEFIK_REMOTE_PORT }} (used if empty)
+                </p>
+              </div>
+              <div class="space-y-1">
+                <label class="block text-sm font-semibold text-gray-700">Remote Path</label>
+                <input v-model="dbSettings.TRAEFIK_REMOTE_PATH" type="text" placeholder="e.g. /etc/traefik/dynamic" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                <p v-if="dbSettingsFallbacks.TRAEFIK_REMOTE_PATH" class="text-[10px] text-gray-400 italic">
+                  Fallback: {{ dbSettingsFallbacks.TRAEFIK_REMOTE_PATH }} (used if empty)
+                </p>
               </div>
               <div class="space-y-1">
                 <label class="block text-sm font-semibold text-gray-700">Internal Server IP</label>
                 <input v-model="dbSettings.SERVER_IP" type="text" placeholder="e.g. http://10.0.0.5:3000" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                <p v-if="dbSettingsFallbacks.SERVER_IP" class="text-[10px] text-gray-400 italic">
+                  Fallback: {{ dbSettingsFallbacks.SERVER_IP }} (used if empty)
+                </p>
               </div>
             </div>
 
-            <div class="space-y-1">
-              <label class="block text-sm font-semibold text-gray-700">Remote Path</label>
-              <input v-model="dbSettings.TRAEFIK_REMOTE_PATH" type="text" placeholder="e.g. /data/coolify/proxy/dynamic" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+            <div class="space-y-1 sm:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700">Traefik SSH Private Key</label>
+              <p class="text-xs text-gray-500 mb-2">Private key used for SSH/SCP interactions with the remote host. Stored securely on the server.</p>
+              <textarea 
+                v-model="dbSettings.TRAEFIK_SSH_KEY"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono h-32"
+                placeholder="-----BEGIN OPENSSH PRIVATE KEY-----\n..."
+              ></textarea>
+              <p v-if="dbSettingsFallbacks.TRAEFIK_SSH_KEY" class="text-[10px] text-gray-400 italic mt-1">
+                Fallback: [Encrypted Key Detected] (used if empty)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="ti ti-sparkles text-purple-600"></i>
+            AI Assistance (Traefik Config)
+          </h4>
+          
+          <div class="space-y-4 bg-purple-50 p-4 rounded-lg border border-purple-200">
+            <p class="text-xs text-purple-800">
+              This configuration is required for the <strong>AI Assistant</strong> in the <strong>Traefik Custom Config</strong> landing type. 
+              It allows you to describe Traefik rules (redirects, proxies, etc.) in plain text and generate the YAML configuration automatically.
+            </p>
+            
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700">OpenRouter API Key</label>
+              <input v-model="dbSettings.LLM_OPENROUTER_API_KEY" type="password" placeholder="sk-or-v1-..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
+              <p v-if="dbSettingsFallbacks.LLM_OPENROUTER_API_KEY" class="text-[10px] text-gray-400 italic">
+                Fallback: [Encrypted Key Detected] (used if empty)
+              </p>
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700">AI Model</label>
+              <input v-model="dbSettings.LLM_MODEL" type="text" placeholder="e.g. google/gemini-2.5-flash-lite" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
+              <p v-if="dbSettingsFallbacks.LLM_MODEL" class="text-[10px] text-gray-400 italic">
+                Fallback: {{ dbSettingsFallbacks.LLM_MODEL }} (used if empty)
+              </p>
+              <p class="text-[10px] text-gray-500">
+                Default: google/gemini-2.5-flash-lite (via OpenRouter)
+              </p>
             </div>
           </div>
         </div>

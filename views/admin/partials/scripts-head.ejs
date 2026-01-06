@@ -35,8 +35,10 @@
         newLanding: { name: '', slug: '', type: 'html', domains: [], content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>New Landing</title>\n</head>\n<body>\n  <h1>Hello World!</h1>\n</body>\n</html>' },
         selectedEjsFiles: [],
         selectedEjsZip: null,
+        selectedVirtualFiles: [],
         editSelectedEjsFiles: [],
         editSelectedEjsZip: null,
+        editSelectedVirtualFiles: [],
         editingLanding: null,
         addEditor: null,
         editEditor: null,
@@ -118,7 +120,7 @@
         
         // Settings Modal
         showSettingsModal: false,
-        settingsTab: 'local',
+        settingsTab: 'db',
         localSettings: {},
         dbSettings: {
           TRAEFIK_ENABLED: false,
@@ -126,18 +128,13 @@
           TRAEFIK_REMOTE_USER: '',
           TRAEFIK_REMOTE_PORT: '22',
           TRAEFIK_REMOTE_PATH: '',
-          SERVER_IP: ''
+          SERVER_IP: '',
+          TRAEFIK_SSH_KEY: '',
+          LLM_OPENROUTER_API_KEY: '',
+          LLM_MODEL: ''
         },
-        localStorageSettingsConfig: [
-          {
-            id: 'traefik_ssh_private_key',
-            label: 'Traefik SSH Private Key',
-            description: 'Private key used for SSH/SCP interactions with TRAEFIK_REMOTE_HOST. Stored only in your browser.',
-            type: 'textarea',
-            placeholder: '-----BEGIN OPENSSH PRIVATE KEY-----\n...',
-            required: false
-          }
-        ],
+        dbSettingsFallbacks: {},
+        localStorageSettingsConfig: [],
 
         // UI State
         loading: {},
@@ -217,7 +214,16 @@
         }
       },
       showAddModal(val) {
-        if (val) this.$nextTick(() => this.initAddEditor());
+        if (val) {
+          this.$nextTick(() => {
+            if (this.newLanding.type === 'html') this.initAddEditor();
+            if (this.newLanding.type === 'traefik-config') this.initTraefikEditor('add');
+          });
+        }
+      },
+      'newLanding.type'(val) {
+        if (val === 'html') this.initAddEditor();
+        if (val === 'traefik-config') this.initTraefikEditor('add');
       },
       async showOrganizationsModal(val) {
         if (val) {

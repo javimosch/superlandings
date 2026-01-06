@@ -16,16 +16,21 @@
           return res.json();
         },
         async update(id, payload, headers) {
+          const isFormData = payload instanceof FormData;
           const res = await fetchImpl(`/api/landings/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', ...headers },
-            body: JSON.stringify(payload)
+            headers: isFormData ? headers : { 'Content-Type': 'application/json', ...headers },
+            body: isFormData ? payload : JSON.stringify(payload)
           });
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         },
-        async updateFiles(id, formData) {
-          const res = await fetchImpl(`/api/landings/${id}`, { method: 'PUT', body: formData });
+        async updateFiles(id, formData, headers) {
+          const res = await fetchImpl(`/api/landings/${id}`, { 
+            method: 'PUT', 
+            body: formData,
+            headers
+          });
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
         },

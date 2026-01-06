@@ -2,9 +2,10 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const AdmZip = require('adm-zip');
-const { LANDINGS_DIR, migrateDomains } = require('../lib/db');
+const { LANDINGS_DIR, migrateDomains, readDirectoryFilesSync } = require('../lib/db');
 const { readDB, writeDB, getEngine } = require('../lib/store');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
+const { generateTraefikYaml } = require('../lib/llm');
 const { 
   createVersion, 
   getVersions, 
@@ -28,6 +29,26 @@ const landingVersionsRouter = require('./landing-versions');
 const landingAuditRouter = require('./landing-audit');
 
 const router = express.Router();
+
+// Generate Traefik config using AI
+router.post('/generate-traefik-config', async (req, res) => {
+  if (!req.adminAuth && !hasRight(req.currentUser, 'landings:create')) {
+    return res.status(403).json({ error: 'Missing permission' });
+  }
+
+  try {
+    const { prompt, slug, domains } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    const yaml = await generateTraefikYaml(prompt, { slug, domains });
+    res.json({ yaml });
+  } catch (error) {
+    console.error('Error generating Traefik config:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Get all landings (filtered by organization for non-admin users)
 router.get('/', async (req, res) => {
@@ -131,6 +152,33 @@ router.post('/', async (req, res) => {
           fs.renameSync(file.path, dest);
         });
       }
+    } else if (type === 'virtual' && req.files && req.files.length > 0) {
+      // Validate index.html exists in the uploaded files (at the root)
+      const hasIndex = req.files.some(f => f.originalname === 'index.html');
+      if (!hasIndex) {
+        // Cleanup uploaded files
+        req.files.forEach(f => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
+        return res.status(400).json({ error: 'Virtual codebase must include an index.html file at the root' });
+      }
+
+      // For virtual codebase, we might receive files with relative paths in originalname if uploaded as folder
+      req.files.forEach(file => {
+        // Use the originalname as the relative path (webkitRelativePath in frontend)
+        const relativePath = file.originalname;
+        const dest = path.join(landingDir, relativePath);
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.renameSync(file.path, dest);
+      });
+
+      // Populate landing.files for initial persistence if mongo
+      if (getEngine() === 'mongo') {
+        landing.files = [];
+        readDirectoryFilesSync(landingDir, '', landing.files);
+      }
+    } else if (type === 'traefik-config') {
+      const content = req.body.content || '# Traefik custom config\nhttp:\n  routers:\n  services:';
+      landing.content = content;
+      // No physical files needed for now, as it's just config
     }
 
     // Create initial version
@@ -203,11 +251,6 @@ router.put('/:id', async (req, res) => {
         versionIds: [afterVersion.id]
       });
 
-      // Invalidate cache on disk for mongo-backed mode
-      if (getEngine() === 'mongo') {
-        clearLandingCache(landing.slug);
-      }
-
       res.json({ success: true });
     } else if (landing.type === 'ejs' && req.files && req.files.length > 0) {
       // Clear all existing files in the landing directory first
@@ -252,13 +295,83 @@ router.put('/:id', async (req, res) => {
         versionIds: [afterVersion.id]
       });
 
-      if (getEngine() === 'mongo') {
-        clearLandingCache(landing.slug);
+      res.json({ success: true });
+    } else if (landing.type === 'virtual' && req.files && req.files.length > 0) {
+      // Validate index.html exists in the uploaded files (at the root)
+      const hasIndex = req.files.some(f => f.originalname === 'index.html');
+      if (!hasIndex) {
+        // Cleanup uploaded files
+        req.files.forEach(f => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
+        return res.status(400).json({ error: 'Virtual codebase must include an index.html file at the root' });
       }
+
+      // Clear existing files
+      if (fs.existsSync(landingDir)) {
+        fs.rmSync(landingDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(landingDir, { recursive: true });
+
+      req.files.forEach(file => {
+        const relativePath = file.originalname;
+        const dest = path.join(landingDir, relativePath);
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.renameSync(file.path, dest);
+      });
+
+      // Update files in memory for persistence
+      if (getEngine() === 'mongo') {
+        landing.files = [];
+        readDirectoryFilesSync(landingDir, '', landing.files);
+      }
+
+      // Create version after update - this captures the current state of the landing
+      const afterVersion = await createVersion(landing, 'Updated Virtual Codebase files');
+
+      // Update landing to point to the new version
+      landing.currentVersionId = afterVersion.id;
+      landing.currentVersionNumber = afterVersion.versionNumber;
+
+      await writeDB(db);
+
+      // Log audit event with linked version
+      await logAudit(id, {
+        action: AUDIT_ACTIONS.UPDATE,
+        actor: req.currentUser?.email || 'admin',
+        isAdmin: req.adminAuth,
+        details: 'Updated Virtual Codebase files',
+        metadata: { versionNumber: afterVersion.versionNumber },
+        versionIds: [afterVersion.id]
+      });
+
+      res.json({ success: true });
+    } else if (landing.type === 'traefik-config') {
+      const content = typeof req.body.content === 'string' ? req.body.content : '';
+      landing.content = content;
+
+      // Create version after update
+      const afterVersion = await createVersion(landing, 'Updated Traefik config');
+      if (!afterVersion) {
+        throw new Error('Failed to create version snapshot after update');
+      }
+
+      landing.currentVersionId = afterVersion.id;
+      landing.currentVersionNumber = afterVersion.versionNumber;
+
+      await writeDB(db);
+
+      // Log audit event
+      await logAudit(id, {
+        action: AUDIT_ACTIONS.UPDATE,
+        actor: req.currentUser?.email || 'admin',
+        isAdmin: req.adminAuth,
+        details: 'Updated custom Traefik config',
+        metadata: { versionNumber: afterVersion.versionNumber },
+        versionIds: [afterVersion.id]
+      });
 
       res.json({ success: true });
     } else {
-      res.status(400).json({ error: 'Only HTML and EJS landings can be edited this way' });
+      res.status(400).json({ error: 'Only HTML, EJS, and Virtual landings can be edited this way' });
     }
   } catch (error) {
     console.error('Error updating landing:', error);
@@ -277,14 +390,14 @@ router.get('/:id/content', async (req, res) => {
       return res.status(404).json({ error: 'Landing not found' });
     }
 
-    if (landing.type === 'html') {
+    if (landing.type === 'html' || landing.type === 'traefik-config') {
       if (getEngine() === 'mongo' && typeof landing.content === 'string') {
         return res.json({ content: landing.content });
       }
       const content = await ensureLandingContentAndRead(landing);
       res.json({ content });
     } else {
-      res.status(400).json({ error: 'Only HTML landings can be retrieved this way' });
+      res.status(400).json({ error: 'Only HTML and Traefik config landings can be retrieved this way' });
     }
   } catch (error) {
     console.error('Error reading landing content:', error);
@@ -451,7 +564,7 @@ async function ensureLandingContentAndRead(landing) {
   fs.mkdirSync(landingDir, { recursive: true });
 
   if (!fs.existsSync(indexPath)) {
-    if (getEngine() === 'mongo' && landing.type === 'html' && typeof landing.content === 'string') {
+    if (getEngine() === 'mongo' && (landing.type === 'html' || landing.type === 'traefik-config') && typeof landing.content === 'string') {
       fs.writeFileSync(indexPath, landing.content);
       return landing.content;
     }

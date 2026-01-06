@@ -84,7 +84,9 @@ const storage = multer.diskStorage({
     cb(null, path.join(DATA_DIR, 'uploads'));
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
+    // Use a flat filename for the temporary upload directory to avoid issues with slashes
+    const safeName = file.originalname.replace(/[\/\\]/g, '_');
+    cb(null, Date.now() + '-' + safeName);
   }
 });
 const upload = multer({ storage });

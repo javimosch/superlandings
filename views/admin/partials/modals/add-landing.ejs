@@ -44,7 +44,30 @@
           <option value="html">Single HTML File</option>
           <option value="static">Static Folder (ZIP or Files)</option>
           <option value="ejs">EJS Template</option>
+          <option value="virtual">Virtual codebase (Folder upload)</option>
+          <option value="traefik-config">Traefik Custom Config (AI Assisted)</option>
         </select>
+      </div>
+
+      <div v-if="newLanding.type === 'traefik-config'">
+        <label class="block text-sm font-medium text-gray-700 mb-2">AI Assistant - Describe your config</label>
+        <div class="flex gap-2 mb-4">
+          <textarea v-model="traefikAiPrompt" rows="2" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g. Reverse proxy /api to 10.0.0.5:8080 and redirect /old to /new"></textarea>
+          <button @click="generateTraefikWithAi('add')" type="button" :disabled="generatingAi" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400">
+            {{ generatingAi ? 'Generating...' : '✨ Generate' }}
+          </button>
+        </div>
+        <label class="block text-sm font-medium text-gray-700 mb-2">YAML Configuration</label>
+        <div ref="addTraefikEditorContainer" class="h-64 border border-gray-300 rounded-lg overflow-hidden"></div>
+      </div>
+
+      <div v-if="newLanding.type === 'virtual'">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Upload Folder</label>
+        <input ref="virtualFolderInput" type="file" webkitdirectory directory multiple @change="handleVirtualFilesChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        <p class="mt-1 text-sm text-gray-500">Select a folder to upload its entire structure. Must include an <code>index.html</code> at the root.</p>
+        <div v-if="selectedVirtualFiles.length > 0" class="mt-2 text-sm text-green-600 font-medium">
+          📁 {{ selectedVirtualFiles.length }} files selected
+        </div>
       </div>
 
       <div v-if="newLanding.type === 'html'">

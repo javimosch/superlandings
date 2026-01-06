@@ -125,23 +125,35 @@
         async loadDbSettings() {
           this.loading.loadDbSettings = true;
           try {
-            const keys = ['TRAEFIK_ENABLED', 'TRAEFIK_REMOTE_HOST', 'TRAEFIK_REMOTE_USER', 'TRAEFIK_REMOTE_PORT', 'TRAEFIK_REMOTE_PATH', 'SERVER_IP'];
+            const keys = ['TRAEFIK_ENABLED', 'TRAEFIK_REMOTE_HOST', 'TRAEFIK_REMOTE_USER', 'TRAEFIK_REMOTE_PORT', 'TRAEFIK_REMOTE_PATH', 'SERVER_IP', 'TRAEFIK_SSH_KEY', 'LLM_OPENROUTER_API_KEY', 'LLM_MODEL'];
             const auth = btoa('<%= ADMIN_USERNAME %>:<%= ADMIN_PASSWORD %>');
-            const res = await fetch('/saas/api/admin/settings', {
-              headers: { 'Accept': 'application/json', 'Authorization': `Basic ${auth}` }
-            });
-            if (res.status === 401) {
+            
+            // Parallel fetch for settings and fallbacks
+            const [settingsRes, fallbacksRes] = await Promise.all([
+              fetch('/saas/api/admin/settings', {
+                headers: { 'Accept': 'application/json', 'Authorization': `Basic ${auth}` }
+              }),
+              fetch('/api/admin-config/fallbacks', { headers: this.getHeaders() })
+            ]);
+
+            if (settingsRes.status === 401) {
               this.showError('Unauthorized access to shared settings.');
               return;
             }
-            if (!res.ok) throw new Error('Failed to fetch settings');
-            const allSettings = await res.json();
+
+            if (!settingsRes.ok) throw new Error('Failed to fetch settings');
+            const allSettings = await settingsRes.json();
+            
             keys.forEach(key => {
               const setting = allSettings.find(s => s.key === key);
               if (setting) {
                 this.dbSettings[key] = key === 'TRAEFIK_ENABLED' ? setting.value === 'true' : setting.value;
               }
             });
+
+            if (fallbacksRes.ok) {
+              this.dbSettingsFallbacks = await fallbacksRes.json();
+            }
           } catch (err) {
             console.error('Error loading DB settings:', err);
             this.showError('Could not load shared settings');
@@ -155,7 +167,7 @@
           try {
             const auth = btoa('<%= ADMIN_USERNAME %>:<%= ADMIN_PASSWORD %>');
             const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Basic ${auth}` };
-            const keys = Object.keys(this.dbSettings);
+            const keys = ['TRAEFIK_ENABLED', 'TRAEFIK_REMOTE_HOST', 'TRAEFIK_REMOTE_USER', 'TRAEFIK_REMOTE_PORT', 'TRAEFIK_REMOTE_PATH', 'SERVER_IP', 'TRAEFIK_SSH_KEY', 'LLM_OPENROUTER_API_KEY', 'LLM_MODEL'];
             for (const key of keys) {
               let value = this.dbSettings[key];
               if (typeof value === 'boolean') value = String(value);
@@ -164,7 +176,12 @@
                 await fetch('/saas/api/admin/settings', {
                   method: 'POST',
                   headers,
-                  body: JSON.stringify({ key, value, type: key === 'TRAEFIK_ENABLED' ? 'boolean' : 'string', description: `Traefik setting: ${key}` })
+                  body: JSON.stringify({ 
+                    key, 
+                    value, 
+                    type: key === 'TRAEFIK_ENABLED' ? 'boolean' : 'string', 
+                    description: `Traefik setting: ${key}` 
+                  })
                 });
               } else {
                 await fetch(`/saas/api/admin/settings/${key}`, { method: 'PUT', headers, body: JSON.stringify({ value }) });
@@ -204,6 +221,60 @@
               extraKeys: { "Ctrl-F": "findPersistent", "F3": "findNext", "Ctrl-G": "findNext", "Shift-Ctrl-G": "findPrev", "Shift-F3": "findPrev" }
             });
             this.editEditor.setSize('100%', '100%');
+          }
+        },
+
+        initTraefikEditor(mode) {
+          this.$nextTick(() => {
+            const container = mode === 'add' ? this.$refs.addTraefikEditorContainer : this.$refs.editTraefikEditorContainer;
+            if (container) {
+              const textarea = document.createElement('textarea');
+              textarea.value = mode === 'add' ? this.newLanding.content : this.editingLanding.content;
+              container.innerHTML = '';
+              container.appendChild(textarea);
+              const editor = CodeMirror.fromTextArea(textarea, {
+                mode: 'yaml',
+                lineNumbers: true,
+                theme: 'default',
+                lineWrapping: true
+              });
+              editor.setSize('100%', '100%');
+              if (mode === 'add') this.addTraefikEditor = editor;
+              else this.editTraefikEditor = editor;
+            }
+          });
+        },
+
+        async generateTraefikWithAi(mode) {
+          if (!this.traefikAiPrompt) {
+            this.showError('Please describe what you want to achieve.');
+            return;
+          }
+          this.generatingAi = true;
+          try {
+            const slug = mode === 'add' ? this.newLanding.slug : this.editingLanding.slug;
+            const domains = mode === 'add' ? this.newLanding.domains : this.editingLanding.domains;
+            
+            const res = await fetch('/api/landings/generate-traefik-config', {
+              method: 'POST',
+              headers: { ...this.getHeaders(), 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: this.traefikAiPrompt, slug, domains })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            
+            const editor = mode === 'add' ? this.addTraefikEditor : this.editTraefikEditor;
+            if (editor) {
+              editor.setValue(data.yaml);
+            } else {
+              if (mode === 'add') this.newLanding.content = data.yaml;
+              else this.editingLanding.content = data.yaml;
+            }
+            this.showSuccess('Traefik configuration generated!');
+          } catch (err) {
+            this.showError('Error generating Traefik config: ' + err.message);
+          } finally {
+            this.generatingAi = false;
           }
         },
 

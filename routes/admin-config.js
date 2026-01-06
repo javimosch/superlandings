@@ -2,9 +2,19 @@ const express = require('express');
 const { migrateDomains, getAllDomainStrings } = require('../lib/db');
 const { readDB, writeDB } = require('../lib/store');
 const { deployAdminTraefikConfig, removeAdminTraefikConfig, validateTraefikEnv } = require('../lib/traefik');
-const { getTraefikSetting } = require('../lib/traefik-settings');
+const { getTraefikSetting, getTraefikFallbacks } = require('../lib/traefik-settings');
 
 const router = express.Router();
+
+// Get environment fallbacks
+router.get('/fallbacks', async (req, res) => {
+  try {
+    const fallbacks = getTraefikFallbacks();
+    res.json(fallbacks);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Get admin config
 router.get('/', async (req, res) => {
