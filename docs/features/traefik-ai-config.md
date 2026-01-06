@@ -57,6 +57,29 @@ http:
       loadBalancer:
         servers:
           - url: 'http://superlandings:3000'
+
+### Working Redirect Sample
+For domain redirects, use the following structure:
+
+```yaml
+http:
+  routers:
+    sl-toto-toto-microexits-cc:
+      entryPoints:
+        - https
+      rule: Host(`toto.microexits.cc`)
+      middlewares:
+        - sl-toto-redirect-to-microexits-cc
+      service: noop@internal
+      tls:
+        certresolver: letsencrypt
+
+  middlewares:
+    sl-toto-redirect-to-microexits-cc:
+      redirectRegex:
+        regex: '^https?://toto\.microexits\.cc/?(.*)$'
+        replacement: 'https://microexits.cc/$1'
+        permanent: false
 ```
 
 ### How it Works
