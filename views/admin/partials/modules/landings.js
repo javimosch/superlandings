@@ -102,8 +102,7 @@
             this.showEditModal = true;
             this.showEditVersionsSidebar = true; // Unfold by default
             
-            // Critical: versionsModule is integrated into the same Alpine component scope.
-            // We need to set versionLanding and trigger loadVersions.
+            // Critical: versionsModule is integrated into the same scope.
             this.versionLanding = this.editingLanding;
             if (typeof this.loadVersions === 'function') {
               await this.loadVersions();
@@ -118,7 +117,7 @@
           }
         },
 
-        async saveEdit() {
+        async saveEdit(keepOpen = false) {
           try {
             if (!landings) throw new Error('Landings service missing');
             if (this.editingLanding.type === 'html' || this.editingLanding.type === 'traefik-config') {
@@ -126,6 +125,10 @@
               const content = editor.getValue();
               const { ok, data } = await landings.update(this.editingLanding.id, { content }, this.getHeaders());
               if (!ok) throw new Error(data.error || 'Failed to save');
+              // Update current version ID after manual save
+              if (data.versionId) {
+                this.editingLanding.currentVersionId = data.versionId;
+              }
             } else if (this.editingLanding.type === 'ejs') {
               const formData = new FormData();
               if (this.editSelectedEjsZip) {
@@ -159,7 +162,11 @@
               if (!ok) throw new Error(data.error || 'Failed to save');
             }
             this.showSuccess('Changes saved successfully!');
-            this.closeEditModal();
+            if (!keepOpen) {
+              this.closeEditModal();
+            } else {
+              await this.loadVersions(); // Refresh history sidebar if kept open
+            }
             this.loadLandings();
           } catch (err) {
             this.showError('Error saving: ' + err.message);
@@ -221,9 +228,14 @@
             } else {
               this.editingLanding.content = data.content;
             }
-            this.showSuccess('AI changes applied! Preview them before saving.');
+            // Sync current version ID from the response
+            if (data.versionId) {
+              this.editingLanding.currentVersionId = data.versionId;
+            }
+            this.showSuccess(`AI changes applied and saved: ${data.summary || 'Content updated'}`);
             this.landingAiPrompt = '';
-            await this.loadVersions(); // Refresh versions after AI edit might have triggered something (or for future proofing)
+            await this.loadVersions(); // Refresh versions sidebar
+            await this.loadLandings(); // Refresh main list to update version info
           } catch (err) {
             this.showError('AI Edit error: ' + err.message);
           } finally {

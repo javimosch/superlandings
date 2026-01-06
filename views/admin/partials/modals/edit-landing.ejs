@@ -3,50 +3,85 @@
   <div class="bg-white shadow-2xl w-full h-full max-h-screen flex flex-col">
     <div class="px-3 sm:px-6 py-3 sm:py-4 bg-gray-50 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 flex-shrink-0">
       <div class="flex-1 min-w-0">
-        <h3 class="text-base sm:text-xl font-semibold text-gray-900 break-words">Edit {{ editingLanding.type === 'html' ? 'HTML' : (editingLanding.type === 'traefik-config' ? 'Traefik Config' : (editingLanding.type === 'virtual' ? 'Virtual Codebase' : 'EJS Template')) }} - {{ editingLanding.name }}</h3>
-        <div v-if="editingLanding.type === 'html' || editingLanding.type === 'traefik-config'" class="text-xs sm:text-sm text-gray-500 mt-2 hidden sm:block">
+        <h3 class="text-base sm:text-xl font-semibold text-gray-900 break-words">Edit {{ editingLanding ? (editingLanding.type === 'html' ? 'HTML' : (editingLanding.type === 'traefik-config' ? 'Traefik Config' : (editingLanding.type === 'virtual' ? 'Virtual Codebase' : 'EJS Template'))) : '' }} - {{ editingLanding?.name }}</h3>
+        <div v-if="editingLanding && (editingLanding.type === 'html' || editingLanding.type === 'traefik-config')" class="text-xs sm:text-sm text-gray-500 mt-2 hidden sm:block">
           <span class="font-mono bg-gray-100 px-2 py-1 rounded">Ctrl+F</span> to search • 
           <span class="font-mono bg-gray-100 px-2 py-1 rounded">Ctrl+G</span> to find next • 
-          <span class="font-mono bg-gray-100 px-2 py-1 rounded">Ctrl+Shift+G</span> to find previous
+          <span class="font-mono bg-gray-100 px-2 py-1 rounded">Ctrl+Shift+G</span> to find previous • 
+          <span class="font-mono bg-gray-100 px-2 py-1 rounded font-bold">Ctrl+S</span> to save
         </div>
       </div>
-      <button @click="closeEditModal" class="text-gray-500 hover:text-gray-700 flex-shrink-0">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-        </svg>
-      </button>
+      <div class="flex items-center gap-3">
+        <!-- Re-adding .stop and ensuring it's a standard Alpine property -->
+        <button 
+          @click.stop="showEditVersionsSidebar = !showEditVersionsSidebar"
+          class="p-2 bg-white border rounded-lg shadow-sm hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm font-medium"
+          :class="showEditVersionsSidebar ? 'text-blue-600 border-blue-200 bg-blue-50' : 'border-gray-300'"
+          type="button"
+        >
+          <i :class="['ti text-lg', showEditVersionsSidebar ? 'ti-layout-sidebar-right-collapse' : 'ti-history']"></i>
+          <span class="hidden sm:inline">History</span>
+        </button>
+        <button @click="closeEditModal" type="button" class="text-gray-500 hover:text-gray-700 flex-shrink-0">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
     </div>
     
     <div class="flex-1 flex overflow-hidden relative">
       <!-- Main Content Area -->
       <div class="flex-1 flex flex-col min-w-0">
         <div v-if="editingLanding.type === 'html'" class="flex-1 flex flex-col overflow-hidden p-3 sm:p-6">
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">AI Assistant - Describe your changes</label>
-            <div class="flex gap-2">
-              <textarea v-model="landingAiPrompt" rows="2" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" placeholder="e.g. Change the hero background to dark blue, make the headline bigger and add a 'Book Now' button in the navbar"></textarea>
-              <button @click="runAiEdit" type="button" :disabled="generatingAi" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400 text-sm font-semibold flex-shrink-0">
-                <span v-if="generatingAi" class="flex items-center gap-2">
-                  <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Thinking...
-                </span>
-                <span v-else>✨ AI Edit</span>
+          <div class="mb-4 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-2">AI Assistant - Describe your changes</label>
+              <div class="flex gap-2">
+                <textarea v-model="landingAiPrompt" @keydown.ctrl.enter="runAiEdit" rows="2" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" placeholder="e.g. Change the hero background to dark blue, make the headline bigger and add a 'Book Now' button in the navbar"></textarea>
+                <button @click="runAiEdit" type="button" :disabled="generatingAi" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400 text-sm font-semibold flex-shrink-0">
+                  <span v-if="generatingAi" class="flex items-center gap-2">
+                    <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Thinking...
+                  </span>
+                  <span v-else>✨ AI Edit</span>
+                </button>
+              </div>
+            </div>
+            <!-- Tabs Toggle -->
+            <div class="flex bg-gray-100 p-1 rounded-lg self-start sm:self-auto">
+              <button 
+                @click="activeEditTab = 'code'" 
+                :class="activeEditTab === 'code' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'"
+                class="px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2"
+              >
+                <i class="ti ti-code"></i>
+                Code
+              </button>
+              <button 
+                @click="activeEditTab = 'preview'" 
+                :class="activeEditTab === 'preview' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'"
+                class="px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2"
+              >
+                <i class="ti ti-eye"></i>
+                Preview
               </button>
             </div>
           </div>
+
           <div class="flex-1 border border-gray-300 rounded-lg overflow-hidden relative">
-            <div ref="editEditorContainer" class="h-full w-full"></div>
-            <!-- Sidebar Toggle Button -->
-            <button 
-              @click="showEditVersionsSidebar = !showEditVersionsSidebar"
-              class="absolute top-2 right-2 z-10 p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
-              title="Toggle Version History"
-            >
-              <i :class="['ti', showEditVersionsSidebar ? 'ti-layout-sidebar-right-collapse' : 'ti-history']"></i>
-            </button>
+            <div v-show="activeEditTab === 'code'" ref="editEditorContainer" class="h-full w-full"></div>
+            <div v-if="activeEditTab === 'preview'" class="h-full w-full bg-white">
+              <iframe 
+                :srcdoc="editEditor ? editEditor.getValue() : editingLanding.content" 
+                class="w-full h-full border-0"
+                sandbox="allow-scripts allow-same-origin"
+                title="Real-time Preview">
+              </iframe>
+            </div>
           </div>
         </div>
 
@@ -54,7 +89,7 @@
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-2">AI Assistant - Describe your config</label>
             <div class="flex gap-2">
-              <textarea v-model="traefikAiPrompt" rows="2" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g. Reverse proxy /api to 10.0.0.5:8080 and redirect /old to /new"></textarea>
+              <textarea v-model="traefikAiPrompt" @keydown.ctrl.enter="generateTraefikWithAi('edit')" rows="2" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g. Reverse proxy /api to 10.0.0.5:8080 and redirect /old to /new"></textarea>
               <button @click="generateTraefikWithAi('edit')" type="button" :disabled="generatingAi" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400">
                 {{ generatingAi ? 'Generating...' : '✨ Generate' }}
               </button>
@@ -62,14 +97,6 @@
           </div>
           <div class="flex-1 border border-gray-300 rounded-lg overflow-hidden relative">
             <div ref="editTraefikEditorContainer" class="h-full w-full"></div>
-            <!-- Sidebar Toggle Button -->
-            <button 
-              @click="showEditVersionsSidebar = !showEditVersionsSidebar"
-              class="absolute top-2 right-2 z-10 p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
-              title="Toggle Version History"
-            >
-              <i :class="['ti', showEditVersionsSidebar ? 'ti-layout-sidebar-right-collapse' : 'ti-history']"></i>
-            </button>
           </div>
         </div>
 
@@ -78,13 +105,6 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Upload EJS Files</label>
             <div class="flex justify-between items-center mb-2">
               <p class="text-xs text-gray-500">Select one or multiple individual .ejs files.</p>
-              <button 
-                @click="showEditVersionsSidebar = !showEditVersionsSidebar"
-                class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
-                title="Toggle Version History"
-              >
-                <i :class="['ti', showEditVersionsSidebar ? 'ti-layout-sidebar-right-collapse' : 'ti-history']"></i>
-              </button>
             </div>
             <input ref="editEjsFileInput" type="file" :multiple="true" accept=".ejs,.html" @change="handleEditEjsFilesChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
 
@@ -108,13 +128,6 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Upload New Folder Content</label>
             <div class="flex justify-between items-center mb-2">
               <p class="text-xs text-gray-500">Select a folder to replace current content. Must include an <code>index.html</code> at the root.</p>
-              <button 
-                @click="showEditVersionsSidebar = !showEditVersionsSidebar"
-                class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
-                title="Toggle Version History"
-              >
-                <i :class="['ti', showEditVersionsSidebar ? 'ti-layout-sidebar-right-collapse' : 'ti-history']"></i>
-              </button>
             </div>
             <input ref="editVirtualFolderInput" type="file" webkitdirectory directory multiple @change="handleEditVirtualFilesChange" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
             <div v-if="editSelectedVirtualFiles.length > 0" class="mt-2 text-sm text-green-600 font-medium">
@@ -139,7 +152,7 @@
               <i class="ti ti-history text-blue-600"></i>
               History
             </h4>
-            <button @click="showEditVersionsSidebar = false" class="text-gray-400 hover:text-gray-600">
+            <button @click.stop="showEditVersionsSidebar = false" type="button" class="text-gray-400 hover:text-gray-600">
               <i class="ti ti-x"></i>
             </button>
           </div>
@@ -183,13 +196,10 @@
     </div>
 
     <div class="px-3 sm:px-6 py-3 sm:py-4 bg-gray-50 border-t flex gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
-      <button v-if="editingLanding.type === 'html'" @click="previewDirtyChanges('modal')" class="px-3 sm:px-4 py-2 sm:py-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition font-semibold text-xs sm:text-sm flex-shrink-0">
-        👁️ Modal
-      </button>
-      <button v-if="editingLanding.type === 'html'" @click="previewDirtyChanges('tab')" class="px-3 sm:px-4 py-2 sm:py-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition font-semibold text-xs sm:text-sm flex-shrink-0">
+      <button v-if="editingLanding.type === 'html'" @click="openPreviewInNewTab(editEditor ? editEditor.getValue() : editingLanding.content)" class="px-3 sm:px-4 py-2 sm:py-3 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition font-semibold text-xs sm:text-sm flex-shrink-0">
         👁️ Tab
       </button>
-      <button @click="saveEdit" class="flex-1 bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-700 transition font-semibold text-xs sm:text-sm">
+      <button @click="saveEdit(true)" class="flex-1 bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-700 transition font-semibold text-xs sm:text-sm">
         Save Changes
       </button>
       <button @click="closeEditModal" class="px-3 sm:px-6 py-2 sm:py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold text-xs sm:text-sm flex-shrink-0">

@@ -225,12 +225,37 @@ router.post('/:id/ai-edit', async (req, res) => {
       return res.status(404).json({ error: 'Landing not found' });
     }
 
-    const modifiedHtml = await editLandingContent(prompt, currentContent, {
+    const { content: modifiedHtml, summary } = await editLandingContent(prompt, currentContent, {
       slug: landing.slug,
       title: landing.name
     });
 
-    res.json({ content: modifiedHtml });
+    // Auto-save the content
+    const landingDir = getLandingFsDir(landing);
+    fs.mkdirSync(landingDir, { recursive: true });
+    fs.writeFileSync(path.join(landingDir, 'index.html'), modifiedHtml);
+    landing.content = modifiedHtml;
+
+    // Create a version with the AI summary
+    const version = await createVersion(landing, summary || `AI Edit: ${prompt.substring(0, 50)}...`);
+    if (version) {
+      landing.currentVersionId = version.id;
+      landing.currentVersionNumber = version.versionNumber;
+    }
+
+    await writeDB(db);
+
+    // Log audit event
+    await logAudit(id, {
+      action: AUDIT_ACTIONS.UPDATE,
+      actor: req.currentUser?.email || 'admin',
+      isAdmin: req.adminAuth,
+      details: `AI Edit: ${summary}`,
+      metadata: { prompt, summary, versionNumber: version?.versionNumber },
+      versionIds: version ? [version.id] : []
+    });
+
+    res.json({ content: modifiedHtml, summary, versionId: version?.id });
   } catch (error) {
     console.error('Error in AI edit:', error);
     res.status(500).json({ error: error.message });
@@ -283,7 +308,7 @@ router.put('/:id', async (req, res) => {
         versionIds: [afterVersion.id]
       });
 
-      res.json({ success: true });
+      res.json({ success: true, versionId: afterVersion.id });
     } else if (landing.type === 'ejs' && req.files && req.files.length > 0) {
       // Clear all existing files in the landing directory first
       const files = fs.readdirSync(landingDir);
