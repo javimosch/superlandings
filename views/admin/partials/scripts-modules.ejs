@@ -170,6 +170,15 @@
             const keys = ['TRAEFIK_ENABLED', 'TRAEFIK_REMOTE_HOST', 'TRAEFIK_REMOTE_USER', 'TRAEFIK_REMOTE_PORT', 'TRAEFIK_REMOTE_PATH', 'SERVER_IP', 'TRAEFIK_SSH_KEY', 'LLM_OPENROUTER_API_KEY', 'LLM_MODEL'];
             for (const key of keys) {
               let value = this.dbSettings[key];
+              
+              // Normalize value: trim strings, ensuring SSH key has trailing newline
+              if (typeof value === 'string') {
+                value = value.trim();
+                if (key === 'TRAEFIK_SSH_KEY' && value) {
+                  value += '\n';
+                }
+              }
+              
               if (typeof value === 'boolean') value = String(value);
               const checkRes = await fetch(`/saas/api/admin/settings/${key}`, { headers });
               if (checkRes.status === 404) {

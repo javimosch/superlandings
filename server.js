@@ -1,4 +1,5 @@
-require('dotenv').config();
+console.log("MODE", process.env.MODE||'development')
+require('dotenv').config({ path: `.env.${process.env.MODE}`||'.env' });
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
