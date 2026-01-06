@@ -119,6 +119,22 @@
                 </ul>
               </div>
             </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700 flex justify-between">
+                <span>Creativity (Temperature)</span>
+                <span class="font-mono text-purple-600">{{ dbSettings.LLM_TEMPERATURE }}</span>
+              </label>
+              <input v-model="dbSettings.LLM_TEMPERATURE" type="range" min="0" max="2" step="0.1" class="w-full h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer accent-purple-600">
+              <div class="flex justify-between text-[10px] text-gray-400 font-mono">
+                <span>0.0 (Strict)</span>
+                <span>1.0 (Balanced)</span>
+                <span>2.0 (Creative)</span>
+              </div>
+              <p v-if="dbSettingsFallbacks.LLM_TEMPERATURE" class="text-[10px] text-gray-400 italic">
+                Fallback: {{ dbSettingsFallbacks.LLM_TEMPERATURE }} (used if empty)
+              </p>
+            </div>
           </div>
         </div>
 
