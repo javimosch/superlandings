@@ -26,6 +26,12 @@
       >
         <i class="ti ti-device-floppy mr-2"></i> LocalStorage
       </button>
+      <button 
+        @click="settingsTab = 'ai'"
+        :class="['px-6 py-3 text-sm font-medium border-b-2 transition', settingsTab === 'ai' ? 'border-blue-600 text-blue-600 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100']"
+      >
+        <i class="ti ti-sparkles mr-2"></i> AI Assistant
+      </button>
     </div>
 
     <!-- Content -->
@@ -73,6 +79,54 @@
         <div v-if="localStorageSettingsConfig.length === 0" class="text-center py-8 text-gray-500">
           <i class="ti ti-info-circle text-4xl mb-2 block"></i>
           <p>No local settings configured.</p>
+        </div>
+      </div>
+
+      <!-- AI Assistant Tab -->
+      <div v-if="settingsTab === 'ai'" class="space-y-8">
+        <div>
+          <h4 class="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <i class="ti ti-sparkles text-purple-600"></i>
+            AI Configuration
+          </h4>
+          
+          <div class="space-y-4 bg-purple-50 p-4 rounded-lg border border-purple-200">
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700">OpenRouter API Key</label>
+              <input v-model="dbSettings.LLM_OPENROUTER_API_KEY" type="password" placeholder="sk-or-v1-..." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
+              <p v-if="dbSettingsFallbacks.LLM_OPENROUTER_API_KEY" class="text-[10px] text-gray-400 italic">
+                Fallback: [Encrypted Key Detected] (used if empty)
+              </p>
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700">AI Model for Code Editor</label>
+              <input v-model="dbSettings.LLM_MODEL" type="text" placeholder="e.g. minimax/minimax-m2.1" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
+              <p v-if="dbSettingsFallbacks.LLM_MODEL" class="text-[10px] text-gray-400 italic">
+                Fallback: {{ dbSettingsFallbacks.LLM_MODEL }} (used if empty)
+              </p>
+              
+              <div class="mt-4 p-3 bg-white rounded border border-purple-100">
+                <p class="text-[11px] font-semibold text-purple-900 mb-2">Recommended Models:</p>
+                <ul class="text-[10px] text-purple-700 space-y-1 font-mono">
+                  <li class="flex items-center gap-2">
+                    <button @click="dbSettings.LLM_MODEL = 'minimax/minimax-m2.1'" class="hover:underline text-blue-600">minimax/minimax-m2.1</button>
+                    <span class="text-gray-400">(Default)</span>
+                  </li>
+                  <li><button @click="dbSettings.LLM_MODEL = 'x-ai/grok-4-fast'" class="hover:underline text-blue-600">x-ai/grok-4-fast</button></li>
+                  <li><button @click="dbSettings.LLM_MODEL = 'kwaipilot/kat-coder-pro'" class="hover:underline text-blue-600">kwaipilot/kat-coder-pro</button></li>
+                  <li><button @click="dbSettings.LLM_MODEL = 'mistralai/devstral-2512'" class="hover:underline text-blue-600">mistralai/devstral-2512</button></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 bg-blue-50 rounded-lg border border-blue-100 flex gap-3">
+          <i class="ti ti-info-circle text-blue-600 text-lg"></i>
+          <p class="text-xs text-blue-800">
+            These settings power both the Traefik Config generator and the AI Landing Page Editor.
+          </p>
         </div>
       </div>
 
@@ -223,7 +277,7 @@
           Save Local
         </button>
         <button 
-          v-if="settingsTab === 'db'"
+          v-if="settingsTab === 'db' || settingsTab === 'ai'"
           @click="saveDbSettings" 
           class="px-6 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
           :disabled="loading.saveDbSettings"
