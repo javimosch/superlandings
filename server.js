@@ -1,28 +1,38 @@
-console.log("MODE", process.env.MODE||'development')
-require('dotenv').config({ path: `.env.${process.env.MODE}`||'.env' });
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const session = require('express-session');
-const FileStore = require('session-file-store')(session);
-const MongoStore = require('connect-mongo');
+console.log("MODE", process.env.MODE || "development");
+require("dotenv").config({ path: `.env.${process.env.MODE}` || ".env" });
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const session = require("express-session");
+const FileStore = require("session-file-store")(session);
+const MongoStore = require("connect-mongo");
 
 // Local modules
-const { ensureDirectories, DATA_DIR, LANDINGS_DIR } = require('./lib/db');
-const { initPersistence, getEngine } = require('./lib/store');
-const { sessionAuth, setCurrentOrganization, handleLogin } = require('./lib/auth');
-const landingsRouter = require('./routes/landings');
-const adminConfigRouter = require('./routes/admin-config');
-const organizationsRouter = require('./routes/organizations');
-const usersRouter = require('./routes/users');
-const migrationRouter = require('./routes/migration');
-const cloudflareRouter = require('./routes/cloudflare');
-const { domainStaticMiddleware, slugStaticMiddleware, serveLandingByDomain, serveLandingBySlug } = require('./routes/serve');
+const { ensureDirectories, DATA_DIR, LANDINGS_DIR } = require("./lib/db");
+const { initPersistence, getEngine } = require("./lib/store");
+const {
+  sessionAuth,
+  setCurrentOrganization,
+  handleLogin,
+} = require("./lib/auth");
+const landingsRouter = require("./routes/landings");
+const adminConfigRouter = require("./routes/admin-config");
+const organizationsRouter = require("./routes/organizations");
+const usersRouter = require("./routes/users");
+const migrationRouter = require("./routes/migration");
+const cloudflareRouter = require("./routes/cloudflare");
+const {
+  domainStaticMiddleware,
+  slugStaticMiddleware,
+  serveLandingByDomain,
+  serveLandingBySlug,
+} = require("./routes/serve");
 
 // SaaSBackend integration
-const saasbackend = process.env.NODE_ENV === 'production'
-  ? require('saasbackend')
-  : require('./ref-saasbackend');
+const saasbackend =
+  process.env.NODE_ENV === "production"
+    ? require("saasbackend")
+    : require("./ref-saasbackend");
 
 // Initialize
 const app = express();
@@ -40,141 +50,164 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // SaaSBackend Middleware
-app.use('/saas', saasbackend.middleware({
-  mongodbUri: process.env.MONGO_URI,
-  skipBodyParser: true
-}));
+app.use(
+  "/saas",
+  saasbackend.middleware({
+    mongodbUri: process.env.MONGO_URI,
+    skipBodyParser: true,
+  }),
+);
 
-const sessionTtlSeconds = parseInt(process.env.SESSION_TTL_SECONDS || `${24 * 60 * 60}`, 10);
+const sessionTtlSeconds = parseInt(
+  process.env.SESSION_TTL_SECONDS || `${24 * 60 * 60}`,
+  10,
+);
 const sessionCookieMaxAgeMs = sessionTtlSeconds * 1000;
 
-const sessionStore = (getEngine() === 'mongo')
-  ? MongoStore.create({
-      mongoUrl: process.env.MONGO_URI,
-      dbName: process.env.MONGO_DB,
-      collectionName: 'sessions',
-      ttl: sessionTtlSeconds
-    })
-  : new FileStore({
-      path: path.join(DATA_DIR, 'sessions'),
-      ttl: 24 * 60 * 60 * 30, // 1 month
-      reapInterval: 60 * 60 // Cleanup every hour
-    });
+const sessionStore =
+  getEngine() === "mongo"
+    ? MongoStore.create({
+        mongoUrl: process.env.MONGO_URI,
+        dbName: process.env.MONGO_DB,
+        collectionName: "sessions",
+        ttl: sessionTtlSeconds,
+      })
+    : new FileStore({
+        path: path.join(DATA_DIR, "sessions"),
+        ttl: 24 * 60 * 60 * 30, // 1 month
+        reapInterval: 60 * 60, // Cleanup every hour
+      });
 
 // Session middleware
-app.use(session({
-  store: sessionStore,
-  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'strict',
-    maxAge: sessionCookieMaxAgeMs
-  }
-}));
+app.use(
+  session({
+    store: sessionStore,
+    secret:
+      process.env.SESSION_SECRET || "your-secret-key-change-in-production",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, //process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: "strict",
+      maxAge: sessionCookieMaxAgeMs,
+    },
+  }),
+);
 
 // EJS setup - views directory includes both admin views and landing views
-app.set('view engine', 'ejs');
-app.set('views', [path.join(__dirname, 'views'), LANDINGS_DIR]);
+app.set("view engine", "ejs");
+app.set("views", [path.join(__dirname, "views"), LANDINGS_DIR]);
 
 // Multer configuration for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(DATA_DIR, 'uploads'));
+    cb(null, path.join(DATA_DIR, "uploads"));
   },
   filename: (req, file, cb) => {
     // Use a flat filename for the temporary upload directory to avoid issues with slashes
-    const safeName = file.originalname.replace(/[\/\\]/g, '_');
-    cb(null, Date.now() + '-' + safeName);
-  }
+    const safeName = file.originalname.replace(/[\/\\]/g, "_");
+    cb(null, Date.now() + "-" + safeName);
+  },
 });
 const upload = multer({ storage });
 
 // Login page route
-app.get('/login', (req, res) => {
-  res.render('admin/login');
+app.get("/login", (req, res) => {
+  res.render("admin/login");
 });
 
 // Login endpoint
-app.post('/api/login', async (req, res) => {
+app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
-  
+
   if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password required' });
+    return res.status(400).json({ error: "Username and password required" });
   }
 
   const result = await handleLogin(req, username, password);
-  
+
   if (!result.success) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+    return res.status(401).json({ error: "Invalid credentials" });
   }
 
   res.json({
     success: true,
-    user: result.user
+    user: result.user,
   });
 });
 
 // Logout endpoint
-app.get('/api/logout', sessionAuth, (req, res) => {
+app.get("/api/logout", sessionAuth, (req, res) => {
   req.session.destroy((err) => {
     if (err) {
-      return res.status(500).json({ error: 'Logout failed' });
+      return res.status(500).json({ error: "Logout failed" });
     }
-    res.clearCookie('connect.sid');
+    res.clearCookie("connect.sid");
     res.json({ success: true });
   });
 });
 
 // Root redirect to admin
-app.get('/', (req, res) => {
-  res.redirect('/admin');
+app.get("/", (req, res) => {
+  res.redirect("/admin");
 });
 
 // Admin panel route (EJS) with auth check
-app.get('/admin', (req, res) => {
+app.get("/admin", (req, res) => {
   if (!req.session || !req.session.user) {
-    return res.redirect('/login');
+    return res.redirect("/login");
   }
-  res.render('admin/index');
+  res.render("admin/index");
 });
 
 // API routes with auth and organization context
-app.use('/api/landings', sessionAuth, setCurrentOrganization, upload.array('files'), landingsRouter);
-app.use('/api/admin-config', sessionAuth, adminConfigRouter);
-app.use('/api/organizations', sessionAuth, organizationsRouter);
-app.use('/api/users', sessionAuth, usersRouter);
-app.use('/api/migration', sessionAuth, migrationRouter);
-app.use('/api/cloudflare', sessionAuth, setCurrentOrganization, cloudflareRouter);
+app.use(
+  "/api/landings",
+  sessionAuth,
+  setCurrentOrganization,
+  upload.array("files"),
+  landingsRouter,
+);
+app.use("/api/admin-config", sessionAuth, adminConfigRouter);
+app.use("/api/organizations", sessionAuth, organizationsRouter);
+app.use("/api/users", sessionAuth, usersRouter);
+app.use("/api/migration", sessionAuth, migrationRouter);
+app.use(
+  "/api/cloudflare",
+  sessionAuth,
+  setCurrentOrganization,
+  cloudflareRouter,
+);
 
 // Auth info endpoint
-app.get('/api/auth/me', sessionAuth, setCurrentOrganization, (req, res) => {
+app.get("/api/auth/me", sessionAuth, setCurrentOrganization, (req, res) => {
   res.json({
     isAdmin: req.adminAuth,
-    user: req.currentUser ? { email: req.currentUser.email, isAdmin: req.currentUser.isAdmin } : null,
+    user: req.currentUser
+      ? { email: req.currentUser.email, isAdmin: req.currentUser.isAdmin }
+      : null,
     organizations: req.userOrganizations || [],
     currentOrganization: req.currentOrganization || null,
-    rights: req.currentUser?.rights || []
+    rights: req.currentUser?.rights || [],
   });
 });
 
 // Static asset middleware for domain-based routing
-app.use('/*', domainStaticMiddleware);
+app.use("/*", domainStaticMiddleware);
 
 // Static asset middleware for slug-based routing
-app.use('/:slug/*', slugStaticMiddleware);
+app.use("/:slug/*", slugStaticMiddleware);
 
 // Slug-based landing serving
-app.get('/:slug', serveLandingBySlug);
+app.get("/:slug", serveLandingBySlug);
 
 // Start server
 (async () => {
   try {
     await initPersistence();
   } catch (e) {
-    console.error('❌ Persistence initialization failed:', e.message);
+    console.error("❌ Persistence initialization failed:", e.message);
   }
 
   app.listen(PORT, () => {
