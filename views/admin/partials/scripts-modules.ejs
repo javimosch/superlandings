@@ -125,7 +125,7 @@
         async loadDbSettings() {
           this.loading.loadDbSettings = true;
           try {
-            const keys = ['TRAEFIK_ENABLED', 'TRAEFIK_REMOTE_HOST', 'TRAEFIK_REMOTE_USER', 'TRAEFIK_REMOTE_PORT', 'TRAEFIK_REMOTE_PATH', 'SERVER_IP', 'TRAEFIK_SSH_KEY', 'LLM_OPENROUTER_API_KEY', 'LLM_MODEL'];
+            const keys = ['TRAEFIK_ENABLED', 'TRAEFIK_REMOTE_HOST', 'TRAEFIK_REMOTE_USER', 'TRAEFIK_REMOTE_PORT', 'TRAEFIK_REMOTE_PATH', 'SERVER_IP', 'TRAEFIK_SSH_KEY', 'LLM_OPENROUTER_API_KEY', 'LLM_MODEL', 'LLM_TEMPERATURE', 'LLM_TIMEOUT_SECONDS'];
             const auth = btoa('<%= ADMIN_USERNAME %>:<%= ADMIN_PASSWORD %>');
             
             // Parallel fetch for settings and fallbacks
@@ -167,7 +167,7 @@
           try {
             const auth = btoa('<%= ADMIN_USERNAME %>:<%= ADMIN_PASSWORD %>');
             const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': `Basic ${auth}` };
-            const keys = ['TRAEFIK_ENABLED', 'TRAEFIK_REMOTE_HOST', 'TRAEFIK_REMOTE_USER', 'TRAEFIK_REMOTE_PORT', 'TRAEFIK_REMOTE_PATH', 'SERVER_IP', 'TRAEFIK_SSH_KEY', 'LLM_OPENROUTER_API_KEY', 'LLM_MODEL'];
+            const keys = ['TRAEFIK_ENABLED', 'TRAEFIK_REMOTE_HOST', 'TRAEFIK_REMOTE_USER', 'TRAEFIK_REMOTE_PORT', 'TRAEFIK_REMOTE_PATH', 'SERVER_IP', 'TRAEFIK_SSH_KEY', 'LLM_OPENROUTER_API_KEY', 'LLM_MODEL', 'LLM_TEMPERATURE', 'LLM_TIMEOUT_SECONDS'];
             for (const key of keys) {
               let value = this.dbSettings[key];
               
