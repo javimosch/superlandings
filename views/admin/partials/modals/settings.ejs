@@ -135,6 +135,17 @@
                 Fallback: {{ dbSettingsFallbacks.LLM_TEMPERATURE }} (used if empty)
               </p>
             </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700">Request Timeout (seconds)</label>
+              <input v-model="dbSettings.LLM_TIMEOUT_SECONDS" type="number" placeholder="80" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
+              <p class="text-[10px] text-gray-500">
+                Maximum time to wait for an AI response. Default: 80s.
+              </p>
+              <p v-if="dbSettingsFallbacks.LLM_TIMEOUT_SECONDS" class="text-[10px] text-gray-400 italic">
+                Fallback: {{ dbSettingsFallbacks.LLM_TIMEOUT_SECONDS }} (used if empty)
+              </p>
+            </div>
           </div>
         </div>
 
@@ -250,6 +261,14 @@
               </p>
               <p class="text-[10px] text-gray-500">
                 Default: google/gemini-2.5-flash-lite (via OpenRouter)
+              </p>
+            </div>
+
+            <div class="space-y-2">
+              <label class="block text-sm font-semibold text-gray-700">Request Timeout (seconds)</label>
+              <input v-model="dbSettings.LLM_TIMEOUT_SECONDS" type="number" placeholder="80" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm">
+              <p class="text-[10px] text-gray-500">
+                Default: 80s
               </p>
             </div>
           </div>
