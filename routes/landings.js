@@ -85,6 +85,12 @@ router.post('/', async (req, res) => {
 
   try {
     const { slug, type, name, domains, organizationId } = req.body;
+
+    // Validate slug to prevent path traversal: only allow safe characters
+    if (!slug || !/^[a-z0-9][a-z0-9\-_]*$/i.test(slug)) {
+      return res.status(400).json({ error: 'Invalid slug. Use only letters, numbers, hyphens, and underscores, starting with a letter or number.' });
+    }
+
     let parsedDomains = [];
     if (domains) {
       try {
