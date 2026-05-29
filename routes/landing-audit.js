@@ -14,19 +14,18 @@ router.get('/', async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { limit = 50, offset = 0 } = req.query;
-    
+    // parseInt returns NaN for non-numeric input; || fallback ensures safe defaults
+    const limit = Math.max(1, parseInt(req.query.limit, 10) || 50);
+    const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+
     const db = await readDB();
     const landing = db.landings.find(l => l.id === id);
-    
+
     if (!landing) {
       return res.status(404).json({ error: 'Landing not found' });
     }
 
-    const result = await getAuditLogPaginated(id, {
-      limit: parseInt(limit, 10),
-      offset: parseInt(offset, 10)
-    });
+    const result = await getAuditLogPaginated(id, { limit, offset });
 
     res.json(result);
   } catch (error) {
