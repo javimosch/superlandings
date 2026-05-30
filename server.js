@@ -78,12 +78,29 @@ const sessionStore =
         reapInterval: 60 * 60, // Cleanup every hour
       });
 
+// Generate secure session secret
+function getSessionSecret() {
+  if (process.env.SESSION_SECRET) {
+    return process.env.SESSION_SECRET;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    console.error('ERROR: SESSION_SECRET environment variable is required in production!');
+    process.exit(1);
+  }
+
+  // Development: generate a random secret
+  const crypto = require('crypto');
+  const devSecret = crypto.randomBytes(64).toString('hex');
+  console.warn('⚠️  Using generated session secret in development. Set SESSION_SECRET env var for production.');
+  return devSecret;
+}
+
 // Session middleware
 app.use(
   session({
     store: sessionStore,
-    secret:
-      process.env.SESSION_SECRET || "your-secret-key-change-in-production",
+    secret: getSessionSecret(),
     resave: false,
     saveUninitialized: false,
     cookie: {
