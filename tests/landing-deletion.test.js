@@ -166,14 +166,16 @@ test('landing deletion: path construction', async () => {
   assert.strictEqual(landingDir, '/app/data/landings/test-landing');
 });
 
-test('landing deletion: path traversal attempt in slug', async () => {
+test('landing deletion: path traversal now prevented by safeSlugPath', async () => {
+  // This test shows that the vulnerability is now fixed
+  const { safeSlugPath } = require('../lib/utils');
   const LANDINGS_DIR = '/app/data/landings';
   const landing = { slug: '../../../etc/passwd' };
-  const landingDir = path.join(LANDINGS_DIR, landing.slug);
 
-  // path.join will normalize the path, but it might still escape the landings directory
-  // This test documents the current behavior - in production, slug validation should prevent this
-  assert.strictEqual(landingDir, '/app/data/etc/passwd');
+  // After fix: safeSlugPath should throw error instead of allowing traversal
+  assert.throws(() => {
+    safeSlugPath(LANDINGS_DIR, landing.slug);
+  }, /Invalid slug: \.\.\/\.\.\/\.\.\/etc\/passwd/);
 });
 
 console.log('All landing deletion tests passed!');
