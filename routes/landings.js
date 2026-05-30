@@ -23,6 +23,7 @@ const {
 } = require('../lib/versions');
 const { hasRight } = require('../lib/auth');
 const { logAudit, deleteAuditLog, AUDIT_ACTIONS } = require('../lib/audit');
+const { safeSlugPath } = require('../lib/utils');
 const landingDomainsRouter = require('./landing-domains');
 const landingPublishRouter = require('./landing-publish');
 const landingVersionsRouter = require('./landing-versions');
@@ -577,7 +578,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     const landing = db.landings[landingIndex];
-    const landingDir = path.join(LANDINGS_DIR, landing.slug);
+    const landingDir = safeSlugPath(LANDINGS_DIR, landing.slug);
     
     console.log(`🗑️  Deleting landing: ${landing.name} (${landing.slug})`);
 
