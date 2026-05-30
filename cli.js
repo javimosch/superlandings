@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { safeSlugPath } = require('./lib/utils');
 
 const DATA_DIR = path.join(__dirname, 'data');
 const LANDINGS_DIR = path.join(DATA_DIR, 'landings');
@@ -39,7 +40,7 @@ function addLanding(slug, name, htmlFilePath) {
   }
 
   // Create landing directory
-  const landingDir = path.join(LANDINGS_DIR, slug);
+  const landingDir = safeSlugPath(LANDINGS_DIR, slug);
   if (!fs.existsSync(landingDir)) {
     fs.mkdirSync(landingDir, { recursive: true });
   }

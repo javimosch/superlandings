@@ -4,6 +4,7 @@ const path = require('path');
 const { LANDINGS_DIR, migrateDomains } = require('../lib/db');
 const { readDB, getEngine } = require('../lib/store');
 const { getVersions, restoreVersionToDisk, getLandingFsDir } = require('../lib/versions');
+const { isValidSlug } = require('../lib/utils');
 
 const router = express.Router();
 
@@ -69,6 +70,9 @@ async function serveLandingByDomain(req, res, next) {
       const indexPath = await ensureLandingContent(landing);
       return res.sendFile(indexPath);
     } else if (landing.type === 'ejs') {
+      if (!isValidSlug(landing.slug)) {
+        return res.status(400).send('Invalid landing slug');
+      }
       return res.render(path.join(landing.slug, 'index'));
     }
   } catch (error) {
@@ -97,6 +101,9 @@ async function serveLandingBySlug(req, res) {
       const indexPath = await ensureLandingContent(landing);
       res.sendFile(indexPath);
     } else if (landing.type === 'ejs') {
+      if (!isValidSlug(slug)) {
+        return res.status(400).send('Invalid landing slug');
+      }
       res.render(path.join(slug, 'index'));
     }
   } catch (error) {
