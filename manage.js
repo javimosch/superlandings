@@ -475,7 +475,7 @@ async function main() {
       });
 
       const choice = await prompt("Select a compose file (enter number): ");
-      const choiceNum = parseInt(choice);
+      const choiceNum = parseInt(choice, 10);
 
       if (isNaN(choiceNum) || choiceNum < 1 || choiceNum > composeFiles.length) {
         console.error("❌ Invalid selection");
