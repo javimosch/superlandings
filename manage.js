@@ -523,7 +523,7 @@ async function main() {
     const imageChoice = await prompt(
       "Select an image to push (enter number): ",
     );
-    const imageChoiceNum = parseInt(imageChoice);
+    const imageChoiceNum = parseInt(imageChoice, 10);
 
     if (
       isNaN(imageChoiceNum) ||
