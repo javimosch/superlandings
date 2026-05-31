@@ -335,7 +335,9 @@ async function main() {
             );
             break;
           }
-        } catch (e2) {}
+        } catch (e2) {
+          console.error(`Health check curl failed: ${e2.message}`);
+        }
       }
 
       await new Promise((resolve) => setTimeout(resolve, 5000));
