@@ -40,7 +40,7 @@ async function selectEnvFile() {
 
   rl.close();
 
-  const index = parseInt(choice) - 1;
+  const index = parseInt(choice, 10) - 1;
   if (isNaN(index) || index < 0 || index >= envFiles.length) {
     if (choice !== "") {
       console.log(`Invalid selection, using ${envFiles[0]}`);
