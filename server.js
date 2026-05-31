@@ -3,6 +3,7 @@ require("dotenv").config({ path: `.env.${process.env.MODE}` || ".env" });
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
+const crypto = require('crypto');
 const session = require("express-session");
 const FileStore = require("session-file-store")(session);
 const MongoStore = require("connect-mongo");
@@ -90,7 +91,6 @@ function getSessionSecret() {
   }
 
   // Development: generate a random secret
-  const crypto = require('crypto');
   const devSecret = crypto.randomBytes(64).toString('hex');
   console.warn('⚠️  Using generated session secret in development. Set SESSION_SECRET env var for production.');
   return devSecret;
