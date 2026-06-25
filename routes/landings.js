@@ -23,7 +23,7 @@ const {
 } = require('../lib/versions');
 const { hasRight } = require('../lib/auth');
 const { logAudit, deleteAuditLog, AUDIT_ACTIONS } = require('../lib/audit');
-const { safeSlugPath } = require('../lib/utils');
+const { safeSlugPath, isValidSlug } = require('../lib/utils');
 const landingDomainsRouter = require('./landing-domains');
 const landingPublishRouter = require('./landing-publish');
 const landingVersionsRouter = require('./landing-versions');
@@ -87,8 +87,7 @@ router.post('/', async (req, res) => {
   try {
     const { slug, type, name, domains, organizationId } = req.body;
 
-    // Validate slug to prevent path traversal: only allow safe characters
-    if (!slug || !/^[a-z0-9][a-z0-9\-_]*$/i.test(slug)) {
+    if (!isValidSlug(slug)) {
       return res.status(400).json({ error: 'Invalid slug. Use only letters, numbers, hyphens, and underscores, starting with a letter or number.' });
     }
 

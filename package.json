@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon --verbose --ignore data --ignore ref* --watch routes --watch server.js --watch lib server.js",
-    "cli": "node cli.js"
+    "cli": "node cli.js",
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [
     "landing pages",
