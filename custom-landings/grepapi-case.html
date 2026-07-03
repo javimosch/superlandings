@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How a CLI lead engine found my consulting customers — grepapi (SerpApi alternative for founders who hate GTM)</title>
+  <meta name="description" content="A real walkthrough: I'm a builder, not a seller. grepapi found 139 real B2B leads from my terminal — callable companies with phone numbers, emailable sites, and founders literally asking for what I sell — ranked, enriched, and brief-ready. Affordable, CLI/agent-first, BYO-browser. The SerpApi alternative + warm-lead engine." />
+  <meta name="keywords" content="cli lead generation, serpapi alternative, agent lead generation, b2b lead engine, gtm for founders, warm leads, lead generation without cold calling, fractional CTO leads, reddit lead generation" />
+  <meta property="og:title" content="The CLI lead engine that found my consulting customers" />
+  <meta property="og:description" content="One command → 139 real leads with a who and a channel. A walkthrough of grepapi for builders who hate GTM." />
+  <meta property="og:type" content="article" />
+  <link rel="canonical" href="https://grepapi.intrane.fr" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Geist', system-ui, sans-serif; background:#050505; color:#e2e8f0; }
+    code, pre { font-family: 'Geist Mono', ui-monospace, monospace; }
+    .card { background: linear-gradient(135deg,#141416 0%,#111113 100%); border:1px solid #232326; }
+    .term { background:#0b0b0d; border:1px solid #1c1c20; }
+    .glow { background: radial-gradient(680px circle at 50% -5%, rgba(16,185,129,.10), transparent 60%); }
+    .pill { border:1px solid rgba(255,255,255,.1); }
+    a.cta { background:#10b981; color:#000; }
+    a.cta:hover { background:#34d399; }
+  </style>
+</head>
+<body class="glow">
+  <div class="max-w-3xl mx-auto px-5 py-16">
+
+    <!-- hero -->
+    <header>
+      <div class="flex flex-wrap items-center gap-2 mb-6">
+        <span class="text-xs font-medium text-emerald-300/80 pill rounded-full px-3 py-1">a real walkthrough</span>
+        <span class="text-xs font-medium text-white/40 pill rounded-full px-3 py-1">CLI · agent-first · free tier</span>
+      </div>
+      <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-[1.1]">
+        I'm a builder, not a seller.<br/>So I made my terminal find the customers.
+      </h1>
+      <p class="text-white/55 mt-5 text-lg leading-relaxed">
+        No cold calling. No $300/mo scraping bill. One command, and
+        <span class="text-white/90">grepapi</span> handed me <span class="text-white/90">139 real B2B leads</span> —
+        each with a <span class="text-emerald-300">who</span> and a <span class="text-emerald-300">channel</span>,
+        ranked, and ready for my own LLM to write the outreach. Here's exactly what happened.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="https://grepapi.intrane.fr" class="cta inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm">Try grepapi free <span class="text-[10px]">↗</span></a>
+        <a href="#walkthrough" class="inline-flex items-center gap-2 px-6 py-3 rounded-full pill text-white/70 font-medium text-sm hover:text-white">See the walkthrough ↓</a>
+      </div>
+    </header>
+
+    <!-- pain -->
+    <section class="mt-16">
+      <p class="text-white/40 text-sm uppercase tracking-widest mb-3">Sound familiar?</p>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div class="card rounded-xl p-5" style="border-color:#3a1a1a"><p class="text-white/55 text-sm">😩 You built the thing. Now you need customers — and finding them by hand is soul-crushing.</p></div>
+        <div class="card rounded-xl p-5" style="border-color:#3a1a1a"><p class="text-white/55 text-sm">💸 SerpApi / PhantomBuster want $100s a month, and you're bootstrapping.</p></div>
+        <div class="card rounded-xl p-5" style="border-color:#3a1a1a"><p class="text-white/55 text-sm">🔎 You search your ICP and get job boards, directories and "Top 10" listicles.</p></div>
+        <div class="card rounded-xl p-5" style="border-color:#3a1a1a"><p class="text-white/55 text-sm">🧑‍💻 You'd rather your agent do lead-gen than wrestle another GUI SaaS.</p></div>
+      </div>
+    </section>
+
+    <!-- walkthrough -->
+    <section id="walkthrough" class="mt-16">
+      <p class="text-white/40 text-sm uppercase tracking-widest mb-3">The walkthrough · a consulting business finds its customers</p>
+      <h2 class="text-2xl font-bold text-white mb-2">The job: find SME tech companies that need senior engineering help.</h2>
+      <p class="text-white/50 text-sm leading-relaxed mb-6">A real hunt for a French consultancy (fractional architects + staff-aug). I never opened a browser or made a call.</p>
+
+      <!-- step 1 -->
+      <div class="mb-6">
+        <p class="text-emerald-300 text-sm font-semibold mb-2">1 · One command sets up a tuned hunt</p>
+        <div class="term rounded-xl p-4 overflow-x-auto"><pre class="text-xs leading-relaxed"><span class="text-white/40"># describe the target once — a recipe fills the playbook + queries</span>
+<span class="text-emerald-300">grepapi</span> icp <span class="text-amber-200">"editeur logiciel Lyon"</span> <span class="text-amber-200">"looking for a fractional CTO | struggling to scale our platform"</span>
+<span class="text-emerald-300">grepapi</span> run                 <span class="text-white/40"># fetch runs on MY browser — the server never scrapes</span>
+<span class="text-white/40">→ 139 leads  (Maps 50 · web 10 · Reddit 84)  ·  junk auto-dropped</span></pre></div>
+      </div>
+
+      <!-- step 2 -->
+      <div class="mb-6">
+        <p class="text-emerald-300 text-sm font-semibold mb-2">2 · Every lead has a WHO and a CHANNEL (enriched)</p>
+        <div class="grid sm:grid-cols-3 gap-3">
+          <div class="card rounded-xl p-4"><div class="text-lg mb-1">📞</div><p class="text-white/80 text-sm font-medium">Callable</p><p class="text-white/45 text-xs mt-1">Real local software editors, with phone numbers — DECIDEOM (Data &amp; IA), Paybee, VAL SOLUTIONS.</p></div>
+          <div class="card rounded-xl p-4"><div class="text-lg mb-1">✉️</div><p class="text-white/80 text-sm font-medium">Emailable</p><p class="text-white/45 text-xs mt-1">A bare domain → a contact address. Sigma Lyon → <code class="text-emerald-300 text-[11px]">contact@sigma.fr</code>.</p></div>
+          <div class="card rounded-xl p-4"><div class="text-lg mb-1">💬</div><p class="text-white/80 text-sm font-medium">DM-able</p><p class="text-white/45 text-xs mt-1">Reddit founders voicing the pain — <code class="text-emerald-300 text-[11px]">u/AccomplishedKey6869</code>: "Looking for a CTO. Open to Fractional CTO."</p></div>
+        </div>
+      </div>
+
+      <!-- step 3 -->
+      <div class="mb-6">
+        <p class="text-emerald-300 text-sm font-semibold mb-2">3 · It ranks them and hands me the single best next move</p>
+        <div class="term rounded-xl p-4 overflow-x-auto"><pre class="text-xs leading-relaxed"><span class="text-emerald-300">grepapi</span> next
+<span class="text-white/40">{ "action": "reply",
+  "who": "u/AccomplishedKey6869",
+  "link": ".../looking_for_a_cto_open_to_fractional_cto/",
+  "brief": { "instruction": "reply to their post; reference their ask; no pitch…" } }</span></pre></div>
+        <p class="text-white/45 text-xs mt-2">Ranked by fit + freshness (a post from today beats a stale one) — no scrolling 139 rows.</p>
+      </div>
+
+      <!-- step 4 -->
+      <div class="mb-6">
+        <p class="text-emerald-300 text-sm font-semibold mb-2">4 · My own LLM writes the outreach from the brief</p>
+        <div class="card rounded-xl p-5 border-l-2" style="border-left-color:#10b981">
+          <p class="text-white/35 text-[11px] uppercase tracking-wider mb-2">reply · drafted from the brief</p>
+          <p class="text-white/70 text-sm leading-relaxed italic">"Open to fractional is the right instinct pre-traction — you get the senior architecture calls without a full-time comp line. Is the pressing need the architecture itself, the hiring, or just shipping faster? Happy to compare notes either way."</p>
+        </div>
+        <p class="text-white/45 text-xs mt-2">grepapi never runs an LLM — <span class="text-white/70">you bring your own</span>. That's why it costs €29, not €299.</p>
+      </div>
+
+      <!-- step 5 -->
+      <div class="mb-2">
+        <p class="text-emerald-300 text-sm font-semibold mb-2">5 · I mark what converts — and it gets smarter</p>
+        <div class="term rounded-xl p-4 overflow-x-auto"><pre class="text-xs leading-relaxed"><span class="text-emerald-300">grepapi</span> mark <span class="text-amber-200">&lt;id&gt;</span> won      <span class="text-white/40"># email-to-companies landed</span>
+<span class="text-emerald-300">grepapi</span> mark <span class="text-amber-200">&lt;id&gt;</span> skip     <span class="text-white/40"># that reddit thread didn't</span>
+<span class="text-emerald-300">grepapi</span> usage             <span class="text-white/40"># learned: duckduckgo|email 80%, reddit|reply 16%</span>
+<span class="text-white/40">→ next hunt surfaces what works for ME first.</span></pre></div>
+      </div>
+    </section>
+
+    <!-- why cheap / model -->
+    <section class="mt-16">
+      <p class="text-white/40 text-sm uppercase tracking-widest mb-3">Why it's affordable</p>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div class="card rounded-xl p-5"><p class="text-white/80 text-sm font-medium mb-1">You bring the browser</p><p class="text-white/50 text-sm">Fetch runs on your machine, your own session — no proxy farm to pay for. The server never scrapes.</p></div>
+        <div class="card rounded-xl p-5"><p class="text-white/80 text-sm font-medium mb-1">You bring the LLM</p><p class="text-white/50 text-sm">grepapi returns a brief; your agent writes the copy. No token markup.</p></div>
+        <div class="card rounded-xl p-5"><p class="text-white/80 text-sm font-medium mb-1">It sells the brains</p><p class="text-white/50 text-sm">Planning, scoring, qualification, cross-account dedup, enrichment, and a ranking that learns — not the commodities.</p></div>
+        <div class="card rounded-xl p-5"><p class="text-white/80 text-sm font-medium mb-1">Agent-native</p><p class="text-white/50 text-sm">JSON on stdout, typed errors, semantic exit codes. <code class="text-white/70">grepapi guide</code> teaches your agent the whole model.</p></div>
+      </div>
+    </section>
+
+    <!-- what you get -->
+    <section class="mt-14">
+      <p class="text-white/40 text-sm uppercase tracking-widest mb-3">What you get</p>
+      <div class="flex flex-wrap gap-2">
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">5 sources: Google · Bing · DuckDuckGo · Maps · Reddit <span class="text-white/30">(+ LinkedIn on Pro)</span></span>
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">actions: call · comment · reply · email · research</span>
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">contact enrichment (phone · email · u/author)</span>
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">freshness- &amp; outcome-aware ranking</span>
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">one-command recipes</span>
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">free tier: 50 leads / 30 days</span>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="mt-16 card rounded-2xl p-8 text-center" style="border-color:#10b98144">
+      <h2 class="text-2xl md:text-3xl font-extrabold text-white">Point your terminal at your customers.</h2>
+      <p class="text-white/55 mt-3 max-w-xl mx-auto">Free tier, one install line, and your agent can drive the whole thing. Stop sifting search results — get a ranked worklist with a who, a channel, and a brief.</p>
+      <div class="mt-6 flex flex-wrap gap-3 justify-center">
+        <a href="https://grepapi.intrane.fr" class="cta inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm">Get grepapi free <span class="text-[10px]">↗</span></a>
+        <a href="https://grepapi.intrane.fr/#quickstart" class="inline-flex items-center gap-2 px-6 py-3 rounded-full pill text-white/70 font-medium text-sm hover:text-white">See the quickstart</a>
+      </div>
+      <div class="term rounded-xl p-4 mt-6 text-left overflow-x-auto max-w-md mx-auto"><pre class="text-xs leading-relaxed"><span class="text-white/40"># one line</span>
+curl -sSL <span class="text-emerald-300">https://grepapi.intrane.fr/install.sh</span> | sh</pre></div>
+    </section>
+
+    <footer class="mt-16 pt-8 border-t border-white/5 text-white/30 text-sm flex flex-wrap items-center justify-between gap-3">
+      <span>A case study by <a class="text-white/50 hover:text-white/80" href="https://intrane.fr">intrane.fr</a> — human expertise + machine scale.</span>
+      <span><a class="text-emerald-300/70 hover:text-emerald-200" href="https://grepapi.intrane.fr">grepapi.intrane.fr</a></span>
+    </footer>
+
+  </div>
+</body>
+</html>
