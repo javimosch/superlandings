@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>crmd — the CRM your agent runs</title>
+  <meta name="description" content="The agent-first CRM that maintains itself. Contacts self-populate, cold-mail sends itself, replies self-log — one local-first binary. Free & open source; hosted from €19/mo." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    html,body{background-color:#050505}
+    .glow{background-image:radial-gradient(600px circle at 50% 0%, rgba(16,185,129,.10), transparent 60%)}
+    code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  </style>
+</head>
+<body class="text-white/70">
+  <div class="glow">
+  <div class="max-w-3xl mx-auto px-6 pt-20 pb-10">
+
+    <!-- hero -->
+    <p class="text-emerald-400/80 text-xs tracking-[.2em] uppercase mb-4">Open source · agent-first · one binary</p>
+    <h1 class="text-4xl md:text-5xl font-black text-white leading-tight">The CRM your agent runs.</h1>
+    <p class="text-lg text-white/60 mt-5 max-w-2xl">Every CRM dies of stale data because humans won't do data entry. <b class="text-white/90">crmd</b> is the one you never open — an agent drives it, your outreach tools feed it, and replies log themselves. Contacts in, cold-mail out, follow-ups tracked — all in a single local-first binary.</p>
+    <div class="mt-8 flex flex-wrap gap-3 items-center">
+      <code class="bg-[#0f1115] border border-white/10 rounded-lg px-4 py-2.5 text-emerald-300 text-sm">curl -fsSL crmd.intrane.fr/install.sh | sh</code>
+      <a href="#pricing" class="text-emerald-400 hover:text-emerald-300 text-sm font-medium">See pricing →</a>
+    </div>
+    <p class="text-white/30 text-xs mt-3">Free & open source. Hosted (always-on, managed) from €19/mo.</p>
+
+    <!-- the loop -->
+    <div class="mt-16">
+      <h2 class="text-xs tracking-[.15em] uppercase text-white/40 mb-4">The whole loop, one binary</h2>
+      <pre class="bg-[#0f1115] border border-white/10 rounded-xl p-5 text-sm text-white/80 overflow-x-auto"><span class="text-white/40"># your agent runs these — no UI, no seat, no data entry</span>
+crm ingest  '<span class="text-emerald-300">[…leads from grepapi/anywhere…]</span>'   <span class="text-white/40"># contacts land</span>
+crm queue-bulk '<span class="text-emerald-300">[…channel-routed campaign…]</span>'    <span class="text-white/40"># stage cold-mail + calls</span>
+crm send    <span class="text-white/40">--limit 20</span>                          <span class="text-white/40"># drip-send email over SMTP</span>
+crm serve   <span class="text-white/40"># webhook: opens/bounces/replies auto-log; complaints auto-suppress</span></pre>
+      <p class="text-white/50 text-sm mt-4">A lead goes <span class="text-white/80">queued → sent → opened → replied</span> — or bounced/suppressed — without a human touching a form. JSON on stdout, semantic exit codes, <code class="text-emerald-300/80">help-json</code> — built for an agent to drive, not a person to click.</p>
+    </div>
+
+    <!-- pillars -->
+    <div class="mt-16 grid md:grid-cols-3 gap-4">
+      <div class="bg-[#101216] border border-white/10 rounded-xl p-5">
+        <div class="text-emerald-400 text-sm font-semibold">Agent-first</div>
+        <p class="text-white/50 text-sm mt-2">JSON in, JSON out, exit codes, self-describing. The primary user is Claude Code / your agent — the anti-GUI CRM.</p>
+      </div>
+      <div class="bg-[#101216] border border-white/10 rounded-xl p-5">
+        <div class="text-emerald-400 text-sm font-semibold">Local-first</div>
+        <p class="text-white/50 text-sm mt-2">One SQLite file you own. No cloud lock-in, no per-seat tax, no data leaving your machine unless you host it.</p>
+      </div>
+      <div class="bg-[#101216] border border-white/10 rounded-xl p-5">
+        <div class="text-emerald-400 text-sm font-semibold">Self-maintaining</div>
+        <p class="text-white/50 text-sm mt-2">The outreach tools feed it and the reply webhook updates it. The CRM stays current with ~zero manual effort.</p>
+      </div>
+    </div>
+
+    <!-- vs GUI -->
+    <div class="mt-16">
+      <h2 class="text-xs tracking-[.15em] uppercase text-white/40 mb-4">vs a GUI CRM</h2>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="bg-[#141014] border border-red-500/15 rounded-xl p-5">
+          <div class="text-red-300/80 text-sm font-semibold mb-2">HubSpot / Pipedrive / Attio</div>
+          <ul class="text-white/50 text-sm space-y-1.5 list-disc pl-4">
+            <li>A human clicks in a browser to log every touch</li>
+            <li>Per-seat pricing, data in someone else's cloud</li>
+            <li>Goes stale the week you stop updating it</li>
+            <li>An "API" bolted onto a UI-first product</li>
+          </ul>
+        </div>
+        <div class="bg-[#0f1613] border border-emerald-500/20 rounded-xl p-5">
+          <div class="text-emerald-300 text-sm font-semibold mb-2">crmd</div>
+          <ul class="text-white/60 text-sm space-y-1.5 list-disc pl-4">
+            <li>Your agent logs every touch automatically</li>
+            <li>One binary, your data, no seats</li>
+            <li>Auto-fed by outreach + reply webhooks — never stale</li>
+            <li>CLI-first: the interface <i>is</i> the API</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- pricing -->
+    <div id="pricing" class="mt-20">
+      <h2 class="text-2xl font-bold text-white mb-2">Pricing</h2>
+      <p class="text-white/50 text-sm mb-6">The engine is free and open source. Pay only when you want it always-on and managed.</p>
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="bg-[#101216] border border-white/10 rounded-2xl p-6">
+          <div class="text-white font-semibold">crm-cli</div>
+          <div class="text-3xl font-black text-white mt-2">Free<span class="text-base font-medium text-white/40"> · open source</span></div>
+          <ul class="text-white/55 text-sm mt-4 space-y-1.5 list-disc pl-4">
+            <li>The full engine — ingest, campaigns, SMTP send, reply sink</li>
+            <li>Runs locally, bring your own SMTP (Resend or any relay)</li>
+            <li>One SQLite file, uncapped, your machine</li>
+            <li>Agent-first CLI + <code class="text-emerald-300/80">help-json</code></li>
+          </ul>
+          <a href="https://github.com/javimosch/crm-cli" class="inline-block mt-5 text-emerald-400 hover:text-emerald-300 text-sm font-medium">Get the binary →</a>
+        </div>
+        <div class="bg-[#0f1613] border border-emerald-500/25 rounded-2xl p-6 relative">
+          <span class="absolute top-5 right-5 text-[10px] uppercase tracking-wider text-emerald-300/80 border border-emerald-500/30 rounded-full px-2 py-0.5">Hosted</span>
+          <div class="text-white font-semibold">crmd</div>
+          <div class="text-3xl font-black text-white mt-2">€19<span class="text-base font-medium text-white/40">/mo</span></div>
+          <ul class="text-white/60 text-sm mt-4 space-y-1.5 list-disc pl-4">
+            <li>The daemon, always-on — a public reply webhook, no VPS</li>
+            <li>Scheduled drip-send, still your own Resend key (BYO sending)</li>
+            <li>Hosted database + nightly backups</li>
+            <li>Team access</li>
+          </ul>
+          <p class="text-white/30 text-xs mt-4">14-day trial, no card. Everything the free tier does — you just don't run the ops.</p>
+          <a href="mailto:hello@intrane.fr?subject=crmd%20hosted%20trial" class="inline-block mt-4 text-emerald-400 hover:text-emerald-300 text-sm font-medium">Start a trial →</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- pairs with grepapi -->
+    <div class="mt-16 bg-[#101216] border border-white/10 rounded-xl p-6">
+      <div class="text-white font-semibold">Pairs with a lead engine</div>
+      <p class="text-white/50 text-sm mt-2">Point <a href="https://grepapi.intrane.fr" class="text-emerald-300 hover:text-emerald-200">grepapi</a> at an ICP to get ranked, enriched leads, then <code class="text-emerald-300/80">crm ingest</code> them straight into crmd. Your lead engine owns top-of-funnel; crmd owns the relationship after the first touch.</p>
+    </div>
+
+    <footer class="mt-16 pt-8 border-t border-white/10 text-white/30 text-sm flex flex-wrap items-center justify-between gap-3">
+      <span>crmd · built in <a class="text-white/50 hover:text-white/80" href="https://github.com/javimosch/machin">machin</a> · a single native binary</span>
+      <span><a class="text-white/50 hover:text-white/80" href="https://github.com/javimosch/crm-cli">crm-cli (OSS)</a> · <a class="text-white/50 hover:text-white/80" href="mailto:hello@intrane.fr">Contact</a></span>
+    </footer>
+
+  </div>
+  </div>
+  <!-- analytics (SuperInsights) -->
+  <script src="https://superinsights.coolify.intrane.fr/sdk/superinsights.js"></script>
+  <script>
+    if (window.SuperInsights) {
+      SuperInsights.init('pk_e06fb3e1202550226bebdac1fdcfceb82319f2cc4a443f83dd0f9fe0ded3c00a',
+        { apiUrl: 'https://superinsights.coolify.intrane.fr' });
+    }
+  </script>
+</body>
+</html>
