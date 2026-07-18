@@ -6,8 +6,16 @@ const { readDB, getEngine } = require('../lib/store');
 const { getVersions, restoreVersionToDisk, getLandingFsDir } = require('../lib/versions');
 const { writeDirectoryFilesSync } = require('../lib/db');
 const { i18nMiddleware, createTranslationHelper } = require('../lib/i18n');
-const { isValidSlug } = require('../lib/utils');
 const mongoose = require('mongoose');
+
+const router = express.Router();
+
+
+
+// --- path-traversal guards ------------------------------------------------------
+function isValidSlug(slug) {
+  return typeof slug === 'string' && /^[a-z0-9][a-z0-9\-_]*$/i.test(slug);
+}
 
 // A page segment must be a simple filename (no path traversal, no slashes).
 function isValidPage(page) {
@@ -23,9 +31,7 @@ function safeResolvePath(baseDir, relPath) {
   if (resolved !== path.resolve(baseDir) && !resolved.startsWith(normalizedBase)) return null;
   return resolved;
 }
-
-const router = express.Router();
-
+// -------------------------------------------------------------------------------
 
 // --- serve-time head injection (INJECT_HEAD_HTML env) ---------------------------
 // Injects a snippet (e.g. an analytics <script>) before </head> of every served
@@ -108,8 +114,9 @@ async function slugStaticMiddleware(req, res, next) {
   next();
 }
 
-async function serveLandingByDomain(req, res, next) {
+async function serveLandingByDomain(req, res, next) { console.log("[SLBD] path=" + req.path + " host=" + req.get("host"));
   try {
+    console.log('[SLBD] path=' + req.path + ' host=' + req.get('host') + ' url=' + req.url);
     const host = req.get('host');
     if (!host) return next();
 
@@ -153,8 +160,8 @@ async function serveLandingByDomain(req, res, next) {
       // Strip language prefix if present
       if (page === 'fr' || page === 'en') { page = 'index'; }
       else if (page.startsWith('fr/') || page.startsWith('en/')) { page = page.slice(3); }
-      if (!isValidPage(page)) return res.status(400).send('Invalid page');
 
+      if (!isValidPage(page)) return res.status(400).send('Invalid page');
       const templatePath = path.join(landingDir, page + '.ejs');
 
       // For blog-intrane-fr: SSR — fetch from DB (runs BEFORE template check to pass data)
@@ -163,55 +170,36 @@ async function serveLandingByDomain(req, res, next) {
         if (page === 'index') {
           try {
             const BlogPost = mongoose.model('BlogPost');
-            const cacheLayer = require('/app/node_modules/@intranefr/superbackend/src/services/cacheLayer.service');
-
             const qs = (req.originalUrl || '').split('?')[1] || '';
             const qp = Object.fromEntries(qs.split('&').filter(Boolean).map(p => { const [k,v] = p.split('='); return [k, decodeURIComponent(v||'')]; }));
             const limit = Math.min(parseInt(qp.limit) || 10, 50);
             const currentPage = Math.max(parseInt(qp.page) || 1, 1);
             const skip = (currentPage - 1) * limit;
-
-            // Try cache first (5 min TTL for blog index)
-            const cacheKey = 'blog:intrane:index:' + limit + ':' + currentPage;
-            let cached = null;
-            try {
-              cached = await cacheLayer.get(cacheKey);
-            } catch(e) { /* cache miss */ }
-
-            if (cached) {
-              res.locals.posts = cached.posts;
-              res.locals.pagination = cached.pagination;
-            } else {
-              const [posts, total] = await Promise.all([
-                BlogPost.find({ client: 'intrane', status: 'published' })
-                  .sort({ publishedAt: -1, createdAt: -1 })
-                  .select('title slug excerpt category publishedAt')
-                  .skip(skip)
-                  .limit(limit)
-                  .lean(),
-                BlogPost.countDocuments({ client: 'intrane', status: 'published' }),
-              ]);
-
-              const pagination = {
-                currentPage,
-                total,
-                limit,
-                totalPages: Math.ceil(total / limit),
-                hasPrev: currentPage > 1,
-                hasNext: currentPage * limit < total,
-              };
-
-              res.locals.posts = posts || [];
-              res.locals.pagination = pagination;
-
-              // Cache for 5 minutes
-              try {
-                await cacheLayer.set(cacheKey, { posts, pagination }, { ttlSeconds: 300 });
-              } catch(e) { /* cache write miss */ }
-            }
+            const filterTag = (qp.tag || '').trim();
+            const filterCat = (qp.category || '').trim();
+            const query = { client: 'intrane', status: 'published' };
+            if (filterTag) query.tags = filterTag;
+            if (filterCat) query.category = filterCat;
+            const [posts, total, tagsAgg, catsAgg] = await Promise.all([
+              BlogPost.find(query).sort({ publishedAt: -1, createdAt: -1 }).select('title slug excerpt category tags publishedAt').skip(skip).limit(limit).lean(),
+              BlogPost.countDocuments(query),
+              BlogPost.aggregate([{ $match: { client: 'intrane', status: 'published', tags: { $ne: '', $exists: true } } }, { $unwind: '$tags' }, { $group: { _id: '$tags', count: { $sum: 1 } } }, { $sort: { count: -1, _id: 1 } }, { $limit: 30 }]),
+              BlogPost.aggregate([{ $match: { client: 'intrane', status: 'published', category: { $ne: '', $exists: true } } }, { $group: { _id: '$category', count: { $sum: 1 } } }, { $sort: { count: -1, _id: 1 } }])
+            ]);
+            res.locals.posts = posts || [];
+            res.locals.pagination = { currentPage, total, limit, totalPages: Math.ceil(total / limit), hasPrev: currentPage > 1, hasNext: currentPage * limit < total };
+            res.locals.tags = (tagsAgg || []).map(t => ({ name: t._id, count: t.count }));
+            res.locals.categories = (catsAgg || []).map(c => ({ name: c._id, count: c.count }));
+            res.locals.filterTag = filterTag;
+            res.locals.filterCat = filterCat;
           } catch (err) {
-            console.error('[Blog SSR] Error fetching posts:', err);
+            console.error('[Blog SSR] Error:', err.message);
             res.locals.posts = [];
+            res.locals.pagination = { currentPage: 1, total: 0, limit: 10, totalPages: 0, hasPrev: false, hasNext: false };
+            res.locals.tags = [];
+            res.locals.categories = [];
+            res.locals.filterTag = '';
+            res.locals.filterCat = '';
           }
         }
 
@@ -263,9 +251,6 @@ async function serveLandingByDomain(req, res, next) {
 async function serveLandingBySlug(req, res, next) {
   try {
     const { slug } = req.params;
-    if (!isValidSlug(slug)) {
-      return res.status(400).send('Invalid landing slug');
-    }
     const db = req.db || await readDB();
 
     let actualSlug = slug;
@@ -288,9 +273,6 @@ async function serveLandingBySlug(req, res, next) {
 
     const landing = db.landings.find(l => l.slug === actualSlug);
     if (!landing) return res.status(404).send('Landing not found');
-    if (!isValidSlug(landing.slug)) {
-      return res.status(400).send('Invalid landing slug');
-    }
 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
@@ -321,9 +303,9 @@ async function serveLandingBySlug(req, res, next) {
       if (page === 'fr' || page === 'en') page = 'index';
       else if (page.startsWith('fr/') || page.startsWith('en/')) page = page.slice(3);
       if (!page) page = 'index';
-      if (!isValidPage(page)) return res.status(400).send('Invalid page');
 
       const landingDir2 = getLandingFsDir(landing);
+      if (!isValidPage(page)) return res.status(400).send('Invalid page');
       const templatePath = path.join(landingDir2, page + '.ejs');
 
       if (fs.existsSync(templatePath)) {
@@ -387,7 +369,6 @@ async function serveEjsSubPage(req, res, next) {
 
     const landing = db.landings.find(l => l.slug === actualSlug);
     if (!landing || landing.type !== 'ejs') return next();
-    if (!isValidSlug(actualSlug)) return res.status(400).send('Invalid landing slug');
     const landingDir = getLandingFsDir(landing);
 
     const middleware = i18nMiddleware(landingDir);
@@ -476,7 +457,6 @@ async function ensureLandingContent(landing) {
 
 module.exports = {
   attachDb,
-  safeResolvePath,
   domainStaticMiddleware,
   slugStaticMiddleware,
   serveLandingByDomain,
