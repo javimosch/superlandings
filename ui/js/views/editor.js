@@ -18,6 +18,8 @@ app.component('editor-view', {
     const showFileUpload = ref(false);
     const editorMode = ref('ai'); // ai | code | blocks (HTML landings only)
     const blockData = ref([]);
+    const previewWidth = ref('100%'); // 100% | <number>px
+    const previewWidthNumber = computed(() => previewWidth.value === '100%' ? 1400 : parseInt(previewWidth.value) || 375);
     let editor = null;
 
     const isHtml = computed(() => props.landing.type === 'html');
@@ -178,7 +180,7 @@ app.component('editor-view', {
     watch(() => props.landing?.id, load);
 
     return {
-      tab, content, loading, saving, dirty, save, switchTab, previewSrc, openPreviewTab, emit,
+      tab, content, loading, saving, dirty, save, switchTab, previewSrc, openPreviewTab, previewWidth, previewWidthNumber, emit,
       aiPrompt, generatingAi, showAi, aiSummary, runAiEdit, revertAiEdit, runAiGenerate, toast,
       isHtml, isTraefik, isEjs, isVirtual,
       editEjsFiles, editEjsZip, editVirtualFiles, showFileUpload,
@@ -286,12 +288,29 @@ app.component('editor-view', {
 
         <div v-if="loading" style="flex:1;display:flex;align-items:center;justify-content:center"><p class="text-muted">Loading…</p></div>
 
-        <div v-else-if="tab==='preview'" style="flex:1;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">
-          <iframe :src="previewSrc" style="width:100%;height:100%;border:none" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>
+        <div v-else-if="tab==='preview'" style="flex:1;display:flex;flex-direction:column;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface)">
+            <button class="btn btn-ghost" @click="previewWidth='375px'" :style="previewWidth==='375px'?'background:var(--accent);color:#fff;padding:4px 8px;font-size:11px;border:none;border-radius:4px':'padding:4px 8px;font-size:11px;background:transparent;border:none;color:var(--ink-muted);cursor:pointer'" title="Mobile"><i class="fa-solid fa-mobile-screen"></i> 375px</button>
+            <button class="btn btn-ghost" @click="previewWidth='768px'" :style="previewWidth==='768px'?'background:var(--accent);color:#fff;padding:4px 8px;font-size:11px;border:none;border-radius:4px':'padding:4px 8px;font-size:11px;background:transparent;border:none;color:var(--ink-muted);cursor:pointer'" title="Tablet"><i class="fa-solid fa-tablet-screen-button"></i> 768px</button>
+            <button class="btn btn-ghost" @click="previewWidth='100%'" :style="previewWidth==='100%'?'background:var(--accent);color:#fff;padding:4px 8px;font-size:11px;border:none;border-radius:4px':'padding:4px 8px;font-size:11px;background:transparent;border:none;color:var(--ink-muted);cursor:pointer'" title="Desktop"><i class="fa-solid fa-desktop"></i> 100%</button>
+            <input type="range" min="320" max="1400" step="1" :value="previewWidthNumber" @input="previewWidth=$event.target.value+'px'" style="flex:1;min-width:80px" title="Drag to resize">
+            <span style="font-size:11px;color:var(--ink-muted);min-width:50px;text-align:right">{{previewWidth}}</span>
+          </div>
+          <div style="flex:1;overflow:auto;display:flex;justify-content:center;background:var(--canvas)">
+            <iframe :src="previewSrc" :style="{ width: previewWidth, height: '100%', border: 'none', background: '#fff' }" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>
+          </div>
         </div>
 
-        <!-- Code editor full height in the right pane code tab -->
-        <div v-show="tab==='code'" id="codemirror-editor" style="flex:1;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden"></div>
+        <!-- Code editor + mobile preview split -->
+        <div v-show="tab==='code'" style="flex:1;display:flex;gap:12px;min-height:0">
+          <div id="codemirror-editor" style="flex:1;min-width:0;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden"></div>
+          <div style="width:390px;flex-shrink:0;display:flex;flex-direction:column;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden;background:var(--surface)">
+            <div style="padding:6px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600"><i class="fa-solid fa-mobile-screen"></i> Mobile preview</div>
+            <div style="flex:1;overflow:auto;display:flex;justify-content:center;background:var(--canvas)">
+              <iframe :srcdoc="content" style="width:375px;height:100%;border:none;background:#fff" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- EJS/Virtual: no right pane, just sidebar -->
