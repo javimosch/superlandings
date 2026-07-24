@@ -1,0 +1,6 @@
+{
+  "include": ["lib/**/*.js", "routes/**/*.js", "app.js", "cli.js"],
+  "exclude": ["tests/**", "ref-saasbackend/**", "node_modules/**", "scripts/**", "coverage/**"],
+  "all": true,
+  "reporter": ["text", "json-summary", "json", "html"]
+}

@@ -1,15 +1,49 @@
 const express = require('express');
 const { migrateDomains, getAllDomainStrings } = require('../lib/db');
-const { readDB, writeDB } = require('../lib/store');
+const { readDB, readDBMeta, writeDB } = require('../lib/store');
 const { deployAdminTraefikConfig, removeAdminTraefikConfig, validateTraefikEnv } = require('../lib/traefik');
 const { getTraefikSetting, getTraefikFallbacks } = require('../lib/traefik-settings');
 
+const saasbackend = process.env.NODE_ENV === 'production'
+  ? require('saasbackend')
+  : require('../ref-saasbackend');
+
 const router = express.Router();
 
-// Get environment fallbacks
+// Get environment fallbacks (merged with saved DB settings)
 router.get('/fallbacks', async (req, res) => {
   try {
     const fallbacks = getTraefikFallbacks();
+
+    // Merge saved settings from DB (overrides env defaults)
+    const useMongo = process.env.PERSISTENCE_ENGINE === 'mongo' && saasbackend.models?.GlobalSetting;
+    if (useMongo) {
+      const GlobalSetting = saasbackend.models.GlobalSetting;
+      const saved = await GlobalSetting.find({}).lean();
+      for (const s of saved) {
+        if (s.value !== undefined && s.value !== '') {
+          // Mask sensitive keys — only report that they're set, not the actual value
+          if (s.key === 'LLM_OPENROUTER_API_KEY' || s.key === 'TRAEFIK_SSH_KEY') {
+            fallbacks[s.key] = '********';
+          } else {
+            fallbacks[s.key] = s.value;
+          }
+        }
+      }
+    } else {
+      const db = await readDBMeta();
+      const savedSettings = db.settings || {};
+      for (const [key, value] of Object.entries(savedSettings)) {
+        if (value !== undefined && value !== '') {
+          if (key === 'LLM_OPENROUTER_API_KEY' || key === 'TRAEFIK_SSH_KEY') {
+            fallbacks[key] = '********';
+          } else {
+            fallbacks[key] = value;
+          }
+        }
+      }
+    }
+
     res.json(fallbacks);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -18,7 +52,7 @@ router.get('/fallbacks', async (req, res) => {
 
 // Get admin config
 router.get('/', async (req, res) => {
-  const db = await readDB();
+  const db = await readDBMeta();
   const adminConfig = db.adminConfig || { domains: [], published: false, traefikConfigFile: '' };
   adminConfig.domains = migrateDomains(adminConfig.domains || []);
   res.json(adminConfig);
@@ -140,6 +174,54 @@ router.post('/unpublish', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error unpublishing admin:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Save Traefik/LLM settings (upserts into saasbackend GlobalSetting or JSON store)
+router.put('/settings', async (req, res) => {
+  if (!req.adminAuth) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  try {
+    const { settings } = req.body;
+    if (!settings || typeof settings !== 'object') {
+      return res.status(400).json({ error: 'Settings object is required' });
+    }
+    const results = [];
+    const useMongo = process.env.PERSISTENCE_ENGINE === 'mongo' && saasbackend.models?.GlobalSetting;
+
+    if (useMongo) {
+      const GlobalSetting = saasbackend.models.GlobalSetting;
+      for (const [key, value] of Object.entries(settings)) {
+        if (value === undefined || value === null || value === '') continue;
+        let normalizedValue = typeof value === 'string' ? value.trim() : String(value);
+        if (key === 'TRAEFIK_SSH_KEY' && normalizedValue) normalizedValue += '\n';
+        const type = key === 'TRAEFIK_ENABLED' ? 'boolean' : 'string';
+        let setting = await GlobalSetting.findOne({ key });
+        if (setting) { setting.value = normalizedValue; await setting.save(); }
+        else { await GlobalSetting.create({ key, value: normalizedValue, type, description: `Traefik setting: ${key}` }); }
+        results.push({ key, status: 'saved' });
+      }
+      if (saasbackend.services?.globalSettings?.clearSettingsCache) {
+        saasbackend.services.globalSettings.clearSettingsCache();
+      }
+    } else {
+      // JSON persistence fallback — save in db.settings
+      const db = await readDB();
+      if (!db.settings) db.settings = {};
+      for (const [key, value] of Object.entries(settings)) {
+        if (value === undefined || value === null || value === '') continue;
+        let normalizedValue = typeof value === 'string' ? value.trim() : String(value);
+        if (key === 'TRAEFIK_SSH_KEY' && normalizedValue) normalizedValue += '\n';
+        db.settings[key] = normalizedValue;
+        results.push({ key, status: 'saved' });
+      }
+      await writeDB(db);
+    }
+    res.json({ success: true, saved: results.length, results });
+  } catch (error) {
+    console.error('Error saving settings:', error);
     res.status(500).json({ error: error.message });
   }
 });

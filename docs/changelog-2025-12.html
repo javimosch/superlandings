@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Changelog December 2025 - superlandings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      body { font-family: 'Inter', system-ui, sans-serif; background-color: #0a0a0b; color: #e2e8f0; }
+      h1, h2, h3 { font-family: 'Geist', system-ui, sans-serif; }
+      .tab-btn { transition: all 0.2s ease; }
+      .tab-btn.active { background-color: #1a1a1d; border-color: #3b82f6; color: #fff; }
+      .tab-content { display: none; animation: fadeIn 0.3s ease; }
+      .tab-content.active { display: block; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+      .feature-card { background: linear-gradient(135deg, #1a1a1d 0%, #151517 100%); border: 1px solid #262629; transition: all 0.3s ease; }
+      .feature-card:hover { border-color: #3b82f6; transform: translateY(-2px); }
+    </style>
+  </head>
+  <body class="bg-[#0a0a0b] min-h-screen">
+    <div class="max-w-5xl mx-auto px-6 py-16">
+      <header class="mb-16">
+        <a href="changelog.html" class="text-blue-400 hover:text-blue-300 text-sm mb-6 inline-block transition-colors">&larr; Back to Changelog</a>
+        <h1 class="text-5xl font-bold text-white mt-4 tracking-tight">Changelog</h1>
+        <p class="text-slate-400 mt-3 text-lg">December 2025</p>
+        
+        <!-- Tabs -->
+        <div class="flex gap-2 mt-8">
+          <button onclick="switchTab('product')" id="tab-product" class="tab-btn active px-5 py-2.5 rounded-lg border border-slate-700 text-slate-300 font-medium text-sm hover:border-slate-600">
+            Product
+          </button>
+          <button onclick="switchTab('technical')" id="tab-technical" class="tab-btn px-5 py-2.5 rounded-lg border border-slate-700 text-slate-300 font-medium text-sm hover:border-slate-600">
+            Technical
+          </button>
+        </div>
+      </header>
+
+      <!-- Product Changelog -->
+      <div id="content-product" class="tab-content active">
+
+        <div class="feature-card rounded-xl p-6">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+              <span class="text-2xl">⚡</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-white mb-2">Real-time Data Updates</h3>
+              <p class="text-slate-400 leading-relaxed">Added WebSocket endpoint for live BTC price and slot updates every second. Replaced REST polling with persistent WebSocket connections for faster, more reliable data.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card rounded-xl p-6">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+              <span class="text-2xl">📊</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-white mb-2">Multi-Market Support</h3>
+              <p class="text-slate-400 leading-relaxed">Extended data collection to support multiple timeframes (15m, 5m, 1h) simultaneously. Added URL-driven navigation for different market views.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card rounded-xl p-6">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+              <span class="text-2xl">💾</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-white mb-2">Performance & Storage</h3>
+              <p class="text-slate-400 leading-relaxed">Implemented GZip compression and SQLite history storage for faster responses. Added connection pooling to eliminate database overhead.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card rounded-xl p-6">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+              <span class="text-2xl">🔍</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-white mb-2">Chart Improvements</h3>
+              <p class="text-slate-400 leading-relaxed">Added zoom modal with full data support, interval controls, and smart downsampling for smooth performance. Implemented localStorage caching for faster chart loading.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature-card rounded-xl p-6">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+              <span class="text-2xl">🐛</span>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold text-white mb-2">Bug Fixes</h3>
+              <p class="text-slate-400 leading-relaxed">Fixed redirect loops, improved data isolation between timeframes, resolved WebSocket connection issues, and added official-beat endpoint support.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Technical Changelog -->
+      <div id="content-technical" class="tab-content">
+        <div class="space-y-8">
+
+        <section>
+          <h2 class="text-2xl font-semibold text-brand-400 mb-4 flex items-center gap-2">
+            <span>🚀</span> Features
+          </h2>
+          <ul class="space-y-2 text-slate-300">
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>feat: Ensure landing directory exists and write index.html for HTML landings</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>feat: Extract organizations and cloudflare logic into modules</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>feat: Add versions and audit modules for admin panel</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>feat: Refactor landing content handling and persistence</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>feat: Add MongoDB session store and Cloudflare routes</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>feat: Enhance MongoDB persistence with dedicated collections for landings and versions</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>feat: Add Cloudflare DNS integration</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>feat: Add Cloudflare DNS automation plan documentation</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-2xl font-semibold text-red-400 mb-4 flex items-center gap-2">
+            <span>🐛</span> Bug Fixes
+          </h2>
+          <ul class="space-y-2 text-slate-300">
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>fix: Improve slug pattern validation in add-landing modal</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-2xl font-semibold text-emerald-400 mb-4 flex items-center gap-2">
+            <span>📚</span> Documentation
+          </h2>
+          <ul class="space-y-2 text-slate-300">
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>docs: Add frontend modularization plan</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-2xl font-semibold text-amber-400 mb-4 flex items-center gap-2">
+            <span>🚜</span> Refactor
+          </h2>
+          <ul class="space-y-2 text-slate-300">
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>refactor: Extract audit log logic to dedicated module</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>refactor: Modularize admin frontend includes and services</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>refactor: Integrate Tabler Icons and improve UI responsiveness</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>refactor: Adjust Cloudflare conflict types and simplify landing version routes</li>
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>refactor: Make version-related functions asynchronous</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-2xl font-semibold text-slate-400 mb-4 flex items-center gap-2">
+            <span>⚙️</span> Miscellaneous Tasks
+          </h2>
+          <ul class="space-y-2 text-slate-300">
+            <li><span class="text-slate-500 text-sm mr-3">[30/12]</span>chore: Add connect-mongo dependency</li>
+          </ul>
+        </section>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById('content-' + tab).classList.add('active');
+        document.getElementById('tab-' + tab).classList.add('active');
+      }
+    </script>
+  </body>
+</html>

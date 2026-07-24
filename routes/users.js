@@ -1,5 +1,5 @@
 const express = require('express');
-const { readDB, writeDB } = require('../lib/store');
+const { readDB, readDBMeta, writeDB } = require('../lib/store');
 const { hashPassword, AVAILABLE_RIGHTS } = require('../lib/auth');
 
 const router = express.Router();
@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     return res.status(403).json({ error: 'Admin access required' });
   }
   
-  const db = await readDB();
+  const db = await readDBMeta();
   const users = (db.users || []).map(u => ({
     ...u,
     password: undefined // Never expose password
@@ -30,7 +30,7 @@ router.get('/:email', async (req, res) => {
   }
 
   const { email } = req.params;
-  const db = await readDB();
+  const db = await readDBMeta();
   const users = db.users || [];
   const user = users.find(u => u.email === email);
   

@@ -53,6 +53,11 @@
         </button>
       </template>
       
+      <!-- Use New UI Button -->
+      <button onclick="localStorage.removeItem('sl_useLegacyUI'); window.location.href='/admin'" class="px-2 sm:px-4 py-1 sm:py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg transition text-xs sm:text-sm font-medium whitespace-nowrap flex items-center gap-2" title="Switch to new interface">
+        <i class="ti ti-sparkles w-4 h-4"></i>
+      </button>
+
       <!-- Logout Button -->
       <button @click="logout" class="px-2 sm:px-4 py-1 sm:py-2 bg-rose-600 hover:bg-rose-500 rounded-lg transition text-xs sm:text-sm font-medium whitespace-nowrap flex items-center gap-2">
         <i class="ti ti-logout w-4 h-4"></i>

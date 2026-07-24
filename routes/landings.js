@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const AdmZip = require('adm-zip');
 const { LANDINGS_DIR, migrateDomains, readDirectoryFilesSync } = require('../lib/db');
-const { readDB, writeDB, getEngine } = require('../lib/store');
+const { readDB, readDBMeta, readLandingContent, writeDB, getEngine } = require('../lib/store');
 const { deployTraefikConfig, removeTraefikConfig } = require('../lib/traefik');
 const { generateTraefikYaml, editLandingContent } = require('../lib/llm');
 const { 
@@ -54,7 +54,7 @@ router.post('/generate-traefik-config', async (req, res) => {
 // Get all landings (filtered by organization for non-admin users)
 router.get('/', async (req, res) => {
   try {
-    const db = await readDB();
+    const db = await readDBMeta();
     let landings = db.landings || [];
 
     // Filter by organization if current organization is set
@@ -292,6 +292,12 @@ router.put('/:id', async (req, res) => {
       const content = typeof req.body.content === 'string' ? req.body.content : '';
       fs.writeFileSync(path.join(landingDir, 'index.html'), content);
       landing.content = content;
+      // Store block editor data (if provided) for round-trip editing
+      if (Array.isArray(req.body.blockData)) {
+        landing.blockData = req.body.blockData;
+      } else if (req.body.blockData === null) {
+        delete landing.blockData;
+      }
 
       // Create version after update
       const afterVersion = await createVersion(landing, 'Updated content');
@@ -447,19 +453,34 @@ router.put('/:id', async (req, res) => {
 router.get('/:id/content', async (req, res) => {
   try {
     const { id } = req.params;
-    const db = await readDB();
 
-    const landing = db.landings.find(l => l.id === id);
-    if (!landing) {
-      return res.status(404).json({ error: 'Landing not found' });
+    // Fast path: fetch only content from Mongo, skip loading all landings
+    if (getEngine() === 'mongo') {
+      const result = await readLandingContent(id);
+      if (!result.content) {
+        // Check if landing exists at all (meta only)
+        const db = await readDBMeta();
+        const landing = db.landings.find(l => l.id === id);
+        if (!landing) return res.status(404).json({ error: 'Landing not found' });
+        // Landing exists but no content in Mongo — fall back to FS
+        const fullLanding = (await readDB()).landings.find(l => l.id === id);
+        if (fullLanding && (fullLanding.type === 'html' || fullLanding.type === 'traefik-config')) {
+          const fsContent = await ensureLandingContentAndRead(fullLanding);
+          return res.json({ content: fsContent, blockData: result.blockData });
+        }
+        return res.json({ content: '', blockData: result.blockData });
+      }
+      return res.json({ content: result.content, blockData: result.blockData });
     }
 
+    // JSON engine path
+    const db = await readDB();
+    const landing = db.landings.find(l => l.id === id);
+    if (!landing) return res.status(404).json({ error: 'Landing not found' });
+
     if (landing.type === 'html' || landing.type === 'traefik-config') {
-      if (getEngine() === 'mongo' && typeof landing.content === 'string') {
-        return res.json({ content: landing.content });
-      }
       const content = await ensureLandingContentAndRead(landing);
-      res.json({ content });
+      res.json({ content, blockData: landing.blockData || null });
     } else {
       res.status(400).json({ error: 'Only HTML and Traefik config landings can be retrieved this way' });
     }

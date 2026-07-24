@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%2322c55e%22/><text x=%2250%22 y=%2268%22 text-anchor=%22middle%22 font-size=%2260%22 font-weight=%22bold%22 font-family=%22Inter,sans-serif%22 fill=%22%23000%22>I</text></svg>">
+    <title><%= typeof post !== 'undefined' ? (post.title + ' — Blog') : 'Post — Blog Intrane' %></title>
+    <meta name="description" content="<%= typeof post !== 'undefined' ? (post.excerpt || '') : 'Blog post' %>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        intrane: { light: '#86efac', DEFAULT: '#22c55e', dark: '#14532d', black: '#0a0a0a' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #050505; }
+        .text-gradient { background: linear-gradient(to right, #86efac, #22c55e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .prose-blog h1 { color: #fff; font-size: 1.75rem; font-weight: 800; margin-top: 2.5rem; margin-bottom: 1rem; line-height: 1.3; }
+        .prose-blog h2 { color: #fff; font-size: 1.4rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; }
+        .prose-blog h3 { color: #e5e7eb; font-size: 1.15rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+        .prose-blog p { color: #9ca3af; line-height: 1.8; margin-bottom: 1.25rem; }
+        .prose-blog strong { color: #e5e7eb; }
+        .prose-blog a { color: #22c55e; text-decoration: underline; text-underline-offset: 2px; }
+        .prose-blog a:hover { color: #86efac; }
+        .prose-blog ul, .prose-blog ol { color: #9ca3af; line-height: 1.8; margin-bottom: 1.25rem; padding-left: 1.5rem; }
+        .prose-blog li { margin-bottom: 0.5rem; }
+        .prose-blog code { background: #1f2937; color: #86efac; padding: 0.2em 0.4em; border-radius: 4px; font-size: 0.9em; }
+        .prose-blog pre { background: #0a0a0a; border: 1px solid #1f2937; border-radius: 8px; padding: 1.25rem; overflow-x: auto; margin-bottom: 1.5rem; }
+        .prose-blog pre code { background: transparent; padding: 0; color: #e5e7eb; }
+        .prose-blog blockquote { border-left: 3px solid #22c55e; padding-left: 1rem; margin-left: 0; color: #d1d5db; font-style: italic; }
+        .prose-blog img { border-radius: 8px; max-width: 100%; margin: 1.5rem 0; }
+        .prose-blog hr { border-color: #1f2937; margin: 2rem 0; }
+    </style>
+</head>
+<body class="text-gray-300">
+    <nav class="border-b border-[#1f2937] bg-[#050505]/90 backdrop-blur-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 max-w-4xl flex items-center justify-between h-16">
+            <a href="/" class="text-lg font-bold text-white hover:text-[#22c55e] transition-colors">
+                <span class="text-[#22c55e]">Intrane</span>.fr <span class="text-gray-500 font-normal">Blog</span>
+            </a>
+            <div class="flex items-center gap-6 text-sm">
+                <a href="https://intrane.fr/#about" class="text-gray-400 hover:text-white transition-colors">About</a>
+                <a href="https://intrane.fr/#machin" class="text-gray-400 hover:text-white transition-colors">machin</a>
+                <a href="https://intrane.fr/#tools" class="text-gray-400 hover:text-white transition-colors">Toolkit</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 max-w-2xl py-12">
+
+<%
+  var isPreview = (typeof post !== 'undefined' && post.status !== 'published');
+  if (isPreview) {
+%>
+<div class="mb-8 p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5 text-yellow-400 text-sm flex items-center gap-3">
+  <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+  <span><strong>Draft Preview</strong> &mdash; This article is not published yet.</span>
+</div>
+<% } %>
+
+        <% if (typeof post !== 'undefined') { %>
+        <div class="mb-8">
+            <a href="/" class="text-sm text-[#22c55e] hover:text-[#86efac] transition-colors">&larr; Back to blog</a>
+        </div>
+
+        <article>
+            <div class="flex items-center gap-3 text-xs text-gray-500 mb-4">
+                <% if (post.category) { %>
+                <span class="px-2 py-1 rounded-md bg-[#22c55e]/10 text-[#86efac] border border-[#22c55e]/20"><a href="/?category=<%= encodeURIComponent(post.category) %>" class="hover:text-white transition-colors"><%= post.category %></a></span>
+                <% } %>
+                <% if (post.publishedAt) { %>
+                <span><%= new Date(post.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></span>
+                <% } %>
+                <% if (post.authorName) { %>
+                <span>by <%= post.authorName %></span>
+                <% } %>
+            </div>
+
+            <h1 class="text-3xl md:text-4xl font-black text-white mb-6 leading-tight"><%= post.title %></h1>
+
+            <% if (post.tags && post.tags.length > 0) { %>
+            <div class="flex flex-wrap gap-2 mb-8">
+                <% post.tags.forEach(function(t) { %>
+                <a href="/?tag=<%= encodeURIComponent(t) %>" class="px-2.5 py-1 rounded-md bg-[#111] text-gray-400 border border-[#1f2937] text-xs hover:text-[#86efac] hover:border-[#22c55e]/30 transition-all">#<%= t %></a>
+                <% }); %>
+            </div>
+            <% } %>
+
+            <% if (post.html) { %>
+            <div class="prose-blog"><%- post.html %></div>
+            <% } else if (post.markdown) { %>
+            <div class="prose-blog"><pre class="bg-[#0a0a0a] p-4 rounded-lg overflow-x-auto text-sm"><%= post.markdown %></pre></div>
+            <% } %>
+        </article>
+        <% } else { %>
+        <p class="text-center text-gray-500 py-20">Post not found.</p>
+        <% } %>
+    </main>
+
+    <footer class="border-t border-[#1f2937] py-8">
+        <div class="container mx-auto px-4 max-w-4xl flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+            <div class="flex items-center gap-2">
+                <span>© 2026</span>
+                <a href="/" class="hover:text-[#22c55e] transition-colors">Intrane.fr Blog</a>
+            </div>
+            <div class="flex items-center gap-6">
+                <a href="/" class="hover:text-white transition-colors">All Posts</a>
+                <a href="https://intrane.fr/#about" class="hover:text-white transition-colors">About</a>
+                <a href="https://github.com/javimosch" target="_blank" class="hover:text-white transition-colors">GitHub</a>
+            </div>
+        </div>
+    </footer>
+    <script src="https://chatsnip.intrane.fr/w.js" data-agent="pk_bc8fcb9d960ba9038a1864c4" defer></script>
+<!-- analytics (SuperInsights) -->
+<script src="https://superinsights.coolify.intrane.fr/sdk/superinsights.js"></script>
+<script>
+  if (window.SuperInsights) {
+    SuperInsights.init('pk_e06fb3e1202550226bebdac1fdcfceb82319f2cc4a443f83dd0f9fe0ded3c00a',
+      { apiUrl: 'https://superinsights.coolify.intrane.fr' });
+  }
+</script>
+</body>
+</html>

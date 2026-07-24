@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog — Intrane.fr<%= typeof pagination !== 'undefined' && pagination.currentPage > 1 ? ' (Page ' + pagination.currentPage + ')' : '' %><%= typeof filterTag !== 'undefined' && filterTag ? ' — #' + filterTag : '' %><%= typeof filterCat !== 'undefined' && filterCat ? ' — ' + filterCat : '' %></title>
+    <meta name="description" content="Agent-first infrastructure, machine-first languages, and building for autonomy in the age of AI.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%2322c55e%22/><text x=%2250%22 y=%2268%22 text-anchor=%22middle%22 font-size=%2260%22 font-weight=%22bold%22 font-family=%22Inter,sans-serif%22 fill=%22%23000%22>I</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        intrane: { light: '#86efac', DEFAULT: '#22c55e', dark: '#14532d', black: '#0a0a0a' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #050505; }
+        .text-gradient {
+            background: linear-gradient(to right, #86efac, #22c55e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="text-gray-300">
+    <nav class="border-b border-[#1f2937] bg-[#050505]/90 backdrop-blur-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 max-w-4xl flex items-center justify-between h-16">
+            <a href="/" class="text-lg font-bold text-white hover:text-[#22c55e] transition-colors">
+                <span class="text-[#22c55e]">Intrane</span>.fr <span class="text-gray-500 font-normal">Blog</span>
+            </a>
+            <div class="flex items-center gap-6 text-sm">
+                <a href="https://intrane.fr/#about" class="text-gray-400 hover:text-white transition-colors">About</a>
+                <a href="https://intrane.fr/#machin" class="text-gray-400 hover:text-white transition-colors">machin</a>
+                <a href="https://intrane.fr/#tools" class="text-gray-400 hover:text-white transition-colors">Toolkit</a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="pt-16 pb-10 text-center">
+        <div class="container mx-auto px-4 max-w-2xl">
+            <p class="text-xs font-bold tracking-[0.2em] uppercase text-[#86efac] mb-4">Blog</p>
+            <h1 class="text-4xl md:text-5xl font-black text-white mb-4">
+                Building for <span class="text-gradient">Autonomy</span>
+            </h1>
+            <p class="text-gray-400 text-lg leading-relaxed">
+                Thoughts on agent-first infrastructure, self-hosted systems, and owning the stack.
+            </p>
+        </div>
+    </header>
+
+    <% if ((typeof tags !== 'undefined' && tags.length > 0) || (typeof categories !== 'undefined' && categories.length > 0)) { %>
+    <div class="container mx-auto px-4 max-w-2xl pb-6">
+        <!-- Active filter indicator -->
+        <% if (filterTag || filterCat) { %>
+        <div class="mb-4 flex items-center gap-2 text-sm">
+            <span class="text-gray-500">Filtering by:</span>
+            <% if (filterTag) { %>
+            <span class="px-2 py-1 rounded-md bg-[#22c55e]/10 text-[#86efac] border border-[#22c55e]/20 text-xs font-medium">#<%= filterTag %></span>
+            <% } %>
+            <% if (filterCat) { %>
+            <span class="px-2 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-medium"><%= filterCat %></span>
+            <% } %>
+            <a href="/" class="ml-2 text-gray-500 hover:text-white transition-colors">&times; Clear</a>
+        </div>
+        <% } %>
+
+        <!-- Categories -->
+        <% if (typeof categories !== 'undefined' && categories.length > 0) { %>
+        <div class="mb-4">
+            <div class="flex flex-wrap gap-2">
+                <% if (!filterTag && !filterCat) { %>
+                <a href="/" class="px-3 py-1.5 rounded-md bg-[#22c55e]/15 text-[#86efac] border border-[#22c55e]/30 text-xs font-semibold transition-colors">All</a>
+                <% } else { %>
+                <a href="/" class="px-3 py-1.5 rounded-md bg-[#1f2937] text-gray-400 border border-[#1f2937] text-xs hover:text-white transition-colors">All</a>
+                <% } %>
+                <% categories.forEach(function(c) { %>
+                    <% if (filterCat === c.name) { %>
+                    <span class="px-3 py-1.5 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/30 text-xs font-semibold"><%= c.name %></span>
+                    <% } else { %>
+                    <a href="/?category=<%= encodeURIComponent(c.name) %>" class="px-3 py-1.5 rounded-md bg-[#1f2937] text-gray-400 border border-[#1f2937] text-xs hover:text-white hover:border-gray-500 transition-all"><%= c.name %></a>
+                    <% } %>
+                <% }); %>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Tags -->
+        <% if (typeof tags !== 'undefined' && tags.length > 0) { %>
+        <div class="flex flex-wrap gap-1.5">
+            <% tags.forEach(function(t) { %>
+                <% if (filterTag === t.name) { %>
+                <span class="px-2 py-1 rounded-md bg-[#22c55e]/15 text-[#86efac] border border-[#22c55e]/30 text-xs font-semibold">#<%= t.name %></span>
+                <% } else { %>
+                <a href="/?tag=<%= encodeURIComponent(t.name) %>" class="px-2 py-1 rounded-md bg-[#111] text-gray-500 border border-[#1f2937] text-xs hover:text-[#86efac] hover:border-[#22c55e]/30 transition-all">#<%= t.name %></a>
+                <% } %>
+            <% }); %>
+        </div>
+        <% } %>
+    </div>
+    <% } %>
+
+    <main class="container mx-auto px-4 max-w-2xl pb-20">
+        <div class="space-y-8">
+            <% if (typeof posts !== 'undefined' && posts.length > 0) { %>
+                <% posts.forEach(function(post) { %>
+                    <%- include('post-card', { post: post }) %>
+                <% }); %>
+            <% } else { %>
+                <div class="text-center py-16">
+                    <p class="text-gray-500 text-lg mb-2">No posts found.</p>
+                    <% if (filterTag || filterCat) { %>
+                    <a href="/" class="text-[#22c55e] hover:text-[#86efac] transition-colors text-sm">&larr; Clear filters</a>
+                    <% } else { %>
+                    <p class="text-gray-600 text-sm">Stay tuned.</p>
+                    <% } %>
+                </div>
+            <% } %>
+        </div>
+
+        <% if (typeof pagination !== 'undefined' && pagination.totalPages > 1) { %>
+        <div class="flex items-center justify-center gap-3 mt-12">
+            <% var qsParts = []; if (filterTag) qsParts.push('tag=' + encodeURIComponent(filterTag)); if (filterCat) qsParts.push('category=' + encodeURIComponent(filterCat)); var qsBase = qsParts.length ? '&' + qsParts.join('&') : ''; %>
+            <% if (pagination.hasPrev) { %>
+            <a href="/?page=<%= pagination.currentPage - 1 %><%= qsBase %>" class="px-4 py-2 rounded-lg border border-[#1f2937] text-sm text-gray-400 hover:text-white hover:border-[#22c55e]/50 transition-all">&larr; Previous</a>
+            <% } %>
+            <% for (var p = 1; p <= pagination.totalPages; p++) { %>
+                <% if (p === pagination.currentPage) { %>
+                <span class="px-3 py-2 rounded-lg bg-[#22c55e]/10 text-[#86efac] border border-[#22c55e]/20 text-sm font-semibold"><%= p %></span>
+                <% } else if (p === 1 || p === pagination.totalPages || Math.abs(p - pagination.currentPage) <= 2) { %>
+                <a href="/?page=<%= p %><%= qsBase %>" class="px-3 py-2 rounded-lg border border-[#1f2937] text-sm text-gray-500 hover:text-white hover:border-[#22c55e]/50 transition-all"><%= p %></a>
+                <% } else if (p === pagination.currentPage - 3 || p === pagination.currentPage + 3) { %>
+                <span class="px-2 text-gray-600">...</span>
+                <% } %>
+            <% } %>
+            <% if (pagination.hasNext) { %>
+            <a href="/?page=<%= pagination.currentPage + 1 %><%= qsBase %>" class="px-4 py-2 rounded-lg border border-[#1f2937] text-sm text-gray-400 hover:text-white hover:border-[#22c55e]/50 transition-all">Next &rarr;</a>
+            <% } %>
+        </div>
+        <% } %>
+    </main>
+
+    <footer class="border-t border-[#1f2937] py-8">
+        <div class="container mx-auto px-4 max-w-4xl flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+            <div class="flex items-center gap-2">
+                <span>© 2026</span>
+                <a href="https://intrane.fr" class="hover:text-[#22c55e] transition-colors">Intrane.fr</a>
+            </div>
+            <div class="flex items-center gap-6">
+                <a href="https://intrane.fr/#about" class="hover:text-white transition-colors">About</a>
+                <a href="https://intrane.fr/#machin" class="hover:text-white transition-colors">machin</a>
+                <a href="https://intrane.fr/#tools" class="hover:text-white transition-colors">Toolkit</a>
+                <a href="https://github.com/javimosch" target="_blank" class="hover:text-white transition-colors">GitHub</a>
+            </div>
+        </div>
+    </footer>
+    <script src="https://chatsnip.intrane.fr/w.js" data-agent="pk_bc8fcb9d960ba9038a1864c4" defer></script>
+<!-- analytics (SuperInsights) -->
+<script src="https://superinsights.coolify.intrane.fr/sdk/superinsights.js"></script>
+<script>
+  if (window.SuperInsights) {
+    SuperInsights.init('pk_e06fb3e1202550226bebdac1fdcfceb82319f2cc4a443f83dd0f9fe0ded3c00a',
+      { apiUrl: 'https://superinsights.coolify.intrane.fr' });
+  }
+</script>
+</body>
+</html>

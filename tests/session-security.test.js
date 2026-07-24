@@ -2,15 +2,15 @@ const test = require('node:test');
 const assert = require('node:assert');
 
 test('session secret: production requires SESSION_SECRET environment variable', () => {
-  // Test that the server.js session configuration now properly requires env var
-  const serverContent = require('fs').readFileSync('./server.js', 'utf-8');
+  // Session setup lives in app.js (server.js was split into app.js + server.js).
+  const appContent = require('fs').readFileSync('./app.js', 'utf-8');
 
   // Verify the hardcoded fallback has been removed
-  assert.doesNotMatch(serverContent, /your-secret-key-change-in-production/);
+  assert.doesNotMatch(appContent, /your-secret-key-change-in-production/);
 
   // Verify production check exists
-  assert.match(serverContent, /process\.env\.NODE_ENV === 'production'/);
-  assert.match(serverContent, /SESSION_SECRET environment variable is required/);
+  assert.match(appContent, /process\.env\.NODE_ENV === 'production'/);
+  assert.match(appContent, /SESSION_SECRET environment variable is required/);
 });
 
 test('session secret: production environment should require secure configuration', () => {

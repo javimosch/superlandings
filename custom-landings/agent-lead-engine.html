@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>grepapi — a lead engine for your AI agent (CLI, JSON, agent-native)</title>
+  <meta name="description" content="Give your AI agent a lead engine. grepapi is CLI/agent-first: JSON on stdout, typed errors, semantic exit codes, and grepapi guide teaches your agent the whole model. Point it at an ICP; it finds, ranks, enriches and briefs leads — your agent writes the outreach (BYO-LLM)." />
+  <meta name="keywords" content="agent lead generation, ai agent tools, cli lead generation, llm lead gen, autonomous lead generation, agent-native cli, byo llm, ai sdr, tools for ai agents" />
+  <meta property="og:title" content="A lead engine for your AI agent" />
+  <meta property="og:description" content="JSON in/out, a self-teaching guide, BYO-LLM. Point your agent at an ICP and it runs the whole hunt." />
+  <meta property="og:type" content="article" />
+  <link rel="canonical" href="https://grepapi.intrane.fr" />
+  <link rel="sitemap" type="application/xml" href="https://grepapi.intrane.fr/sitemap.xml" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    html, body { background-color:#050505; }
+    body { font-family:'Geist',system-ui,sans-serif; color:#e2e8f0; }
+    code, pre { font-family:'Geist Mono',ui-monospace,monospace; }
+    .card { background-image:linear-gradient(135deg,#141416 0%,#111113 100%); border:1px solid #232326; }
+    .term { background-color:#0b0b0d; border:1px solid #1c1c20; }
+    .glow { background-image:radial-gradient(680px circle at 50% -5%, rgba(16,185,129,.10), transparent 60%); }
+    .pill { border:1px solid rgba(255,255,255,.1); }
+    a.cta { background:#10b981; color:#000; } a.cta:hover { background:#34d399; }
+  </style>
+</head>
+<body class="glow">
+  <div class="max-w-3xl mx-auto px-5 py-16">
+
+    <header>
+      <div class="flex flex-wrap items-center gap-2 mb-6">
+        <span class="text-xs font-medium text-emerald-300/80 pill rounded-full px-3 py-1">for AI agents</span>
+        <span class="text-xs font-medium text-white/40 pill rounded-full px-3 py-1">JSON I/O · exit codes · free tier</span>
+      </div>
+      <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-[1.1]">
+        Give your AI agent<br/>a lead engine.
+      </h1>
+      <p class="text-white/55 mt-5 text-lg leading-relaxed">
+        No SDK, no dashboard, no protocol to learn. grepapi is a <span class="text-white/90">CLI</span>: JSON on stdout,
+        typed errors on stderr, semantic exit codes. Your agent runs <code class="text-emerald-300">grepapi guide</code>
+        once and drives the whole thing — find, rank, enrich, brief — <span class="text-white/90">then writes the outreach itself.</span>
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="https://grepapi.intrane.fr" class="cta inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm">Try grepapi free <span class="text-[10px]">↗</span></a>
+        <a href="#loop" class="inline-flex items-center gap-2 px-6 py-3 rounded-full pill text-white/70 font-medium text-sm hover:text-white">See the loop ↓</a>
+      </div>
+    </header>
+
+    <!-- agent-native -->
+    <section class="mt-16">
+      <p class="text-white/40 text-sm uppercase tracking-widest mb-3">Agent-native by design</p>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div class="card rounded-xl p-5"><p class="text-white/80 text-sm font-medium mb-1">The CLI is the interface</p><p class="text-white/50 text-sm">JSON on stdout, typed errors on stderr, exit codes (0 · 80 input · 90 precondition · 100 retryable). Branch on failure, pipe the output.</p></div>
+        <div class="card rounded-xl p-5"><p class="text-white/80 text-sm font-medium mb-1"><code class="text-emerald-300">grepapi guide</code></p><p class="text-white/50 text-sm">A version-exact skill: the model, loop, sources, actions, enrichment, recipes, examples. Your agent reads it once and self-onboards.</p></div>
+        <div class="card rounded-xl p-5"><p class="text-white/80 text-sm font-medium mb-1"><code class="text-emerald-300">grepapi doctor --fix</code></p><p class="text-white/50 text-sm">Self-healing: it sets up the fetch environment so the agent doesn't have to debug the browser.</p></div>
+        <div class="card rounded-xl p-5"><p class="text-white/80 text-sm font-medium mb-1">BYO-LLM</p><p class="text-white/50 text-sm">The operator <em>is</em> the LLM. grepapi returns a brief; your agent writes the copy. No completions run server-side, no token markup.</p></div>
+      </div>
+    </section>
+
+    <!-- the loop -->
+    <section id="loop" class="mt-16">
+      <p class="text-white/40 text-sm uppercase tracking-widest mb-3">The loop your agent runs</p>
+      <div class="term rounded-xl p-4 overflow-x-auto"><pre class="text-sm leading-relaxed"><span class="text-white/40"># learn the tool, set up a hunt, work it — all as JSON</span>
+grepapi guide                    <span class="text-white/40"># {model, loop, concepts, actions, examples}</span>
+grepapi recipe find-a-partner <span class="text-amber-200">"…"</span>  <span class="text-white/40"># or compose a custom ICP</span>
+grepapi run                      <span class="text-white/40"># fetch (its browser) → scored, enriched leads</span>
+while :; do
+  n=$(grepapi next)              <span class="text-white/40"># {action, lead_id, brief:{lead, playbook, instruction}}</span>
+  [ "$(jq -r .lead_id &lt;&lt;&lt;"$n")" = null ] &amp;&amp; break
+  <span class="text-white/40"># … the agent writes the message from $n.brief …</span>
+  grepapi next --done            <span class="text-white/40"># sent — advance to the next best</span>
+done</pre></div>
+      <p class="text-white/45 text-sm mt-3">Every lead comes back with a <span class="text-white/70">who</span>, a <span class="text-white/70">channel</span> (call · comment · reply · email), and a <span class="text-white/70">brief</span> — freshness- and outcome-aware, so <code class="text-white/70">next</code> surfaces what converts.</p>
+    </section>
+
+    <!-- what it finds -->
+    <section class="mt-14">
+      <p class="text-white/40 text-sm uppercase tracking-widest mb-3">What your agent gets</p>
+      <div class="flex flex-wrap gap-2">
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">5 sources: Google · Bing · DuckDuckGo · Maps · Reddit <span class="text-white/30">(+ LinkedIn on Pro)</span></span>
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">contact enrichment (phone · email · u/author)</span>
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">cross-account dedup graph</span>
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">a ranking that learns from outcomes</span>
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">free tier: 50 leads / 30 days</span>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="mt-16 card rounded-2xl p-8 text-center" style="border-color:#10b98144">
+      <h2 class="text-2xl md:text-3xl font-extrabold text-white">Hand your agent the terminal.</h2>
+      <p class="text-white/55 mt-3 max-w-xl mx-auto">One install line, a self-teaching guide, and a free tier. Your agent does the lead-gen you'd rather not.</p>
+      <div class="mt-6 flex flex-wrap gap-3 justify-center">
+        <a href="https://grepapi.intrane.fr" class="cta inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm">Get grepapi free <span class="text-[10px]">↗</span></a>
+        <a href="https://grepapi.intrane.fr/#quickstart" class="inline-flex items-center gap-2 px-6 py-3 rounded-full pill text-white/70 font-medium text-sm hover:text-white">See the quickstart</a>
+      </div>
+      <div class="term rounded-xl p-4 mt-6 text-left overflow-x-auto max-w-md mx-auto"><pre class="text-xs leading-relaxed"><span class="text-white/40"># one line</span>
+curl -sSL <span class="text-emerald-300">https://grepapi.intrane.fr/install.sh</span> | sh</pre></div>
+    </section>
+
+    <footer class="mt-16 pt-8 border-t border-white/5 text-white/30 text-sm">
+      <p class="mb-2">More on grepapi: <a class="text-emerald-300/70 hover:text-emerald-200" href="https://grepapi.intrane.fr">the product</a> · <a class="text-emerald-300/70 hover:text-emerald-200" href="https://grepapi-case.intrane.fr">the case study</a> · <a class="text-emerald-300/70 hover:text-emerald-200" href="https://serpapi-alternative.intrane.fr">vs SerpApi</a></p>
+      <p>By <a class="text-white/50 hover:text-white/80" href="https://intrane.fr">intrane.fr</a> — human expertise + machine scale.</p>
+    </footer>
+
+  </div>
+</body>
+</html>

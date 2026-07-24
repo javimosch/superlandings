@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>grepapi — the affordable SerpApi alternative (BYO-browser, no proxy bill, CLI)</title>
+  <meta name="description" content="Search results as clean JSON without the proxy bill. grepapi is a CLI, agent-first SerpApi alternative: you bring the browser, it owns parse + schema. €29/mo flat, free tier — and it doesn't stop at SERP, it turns results into ranked, enriched leads." />
+  <meta name="keywords" content="serpapi alternative, cheap serpapi, self-hosted serp api, google search api, scrapingbee alternative, cli serp api, search results json, byo proxy, affordable serp scraping" />
+  <meta property="og:title" content="The affordable SerpApi alternative — minus the proxy bill" />
+  <meta property="og:description" content="Clean search JSON from your own browser. €29 flat, CLI/agent-first, and a lead engine on top." />
+  <meta property="og:type" content="article" />
+  <link rel="canonical" href="https://grepapi.intrane.fr" />
+  <link rel="sitemap" type="application/xml" href="https://grepapi.intrane.fr/sitemap.xml" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    html, body { background-color:#050505; }
+    body { font-family:'Geist',system-ui,sans-serif; color:#e2e8f0; }
+    code, pre { font-family:'Geist Mono',ui-monospace,monospace; }
+    .card { background-image:linear-gradient(135deg,#141416 0%,#111113 100%); border:1px solid #232326; }
+    .term { background-color:#0b0b0d; border:1px solid #1c1c20; }
+    .glow { background-image:radial-gradient(680px circle at 50% -5%, rgba(16,185,129,.10), transparent 60%); }
+    .pill { border:1px solid rgba(255,255,255,.1); }
+    a.cta { background:#10b981; color:#000; } a.cta:hover { background:#34d399; }
+    table td, table th { border-bottom:1px solid #1f1f23; padding:.65rem .75rem; }
+  </style>
+</head>
+<body class="glow">
+  <div class="max-w-3xl mx-auto px-5 py-16">
+
+    <header>
+      <div class="flex flex-wrap items-center gap-2 mb-6">
+        <span class="text-xs font-medium text-emerald-300/80 pill rounded-full px-3 py-1">SerpApi alternative</span>
+        <span class="text-xs font-medium text-white/40 pill rounded-full px-3 py-1">CLI · free tier · €29/mo flat</span>
+      </div>
+      <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-[1.1]">
+        Search results as clean JSON.<br/>Minus the proxy bill.
+      </h1>
+      <p class="text-white/55 mt-5 text-lg leading-relaxed">
+        SerpApi and friends charge per search because they run the proxy farm. <span class="text-white/90">grepapi
+        doesn't</span> — you fetch from <span class="text-white/90">your own browser</span>, and grepapi owns the hard
+        part: turning messy HTML into a <span class="text-emerald-300">stable JSON schema</span>. Flat €29/mo, free tier.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="https://grepapi.intrane.fr" class="cta inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm">Try grepapi free <span class="text-[10px]">↗</span></a>
+        <a href="#compare" class="inline-flex items-center gap-2 px-6 py-3 rounded-full pill text-white/70 font-medium text-sm hover:text-white">Compare ↓</a>
+      </div>
+    </header>
+
+    <!-- the pipe -->
+    <section class="mt-16">
+      <p class="text-white/40 text-sm uppercase tracking-widest mb-3">The idea</p>
+      <p class="text-white/55 leading-relaxed mb-4">A SERP API sells three layers: <span class="text-white/80">fetch</span> (get past blocking), <span class="text-white/80">parse</span> (HTML → structure), and <span class="text-white/80">schema</span> (a stable shape). The proxy/CAPTCHA arms race can't be won cheaply — so grepapi makes <span class="text-white/80">fetch a plugin you run</span> (your browser, your IP) and owns parse + schema.</p>
+      <div class="term rounded-xl p-4 overflow-x-auto"><pre class="text-xs leading-relaxed"><span class="text-white/40"># any fetcher that prints a page to stdout works — here, your anti-detect browser</span>
+<span class="text-emerald-300">fetch</span> <span class="text-amber-200">"machin programming language"</span> <span class="text-white/40">|</span> <span class="text-sky-300">grepapi parse --engine google</span>
+<span class="text-white/40">{ "organic_results": [ { "position": 1, "title": "…", "link": "…", "snippet": "…" }, … ] }</span></pre></div>
+    </section>
+
+    <!-- compare -->
+    <section id="compare" class="mt-16">
+      <p class="text-white/40 text-sm uppercase tracking-widest mb-3">grepapi vs a hosted SERP API</p>
+      <div class="card rounded-xl overflow-x-auto">
+        <table class="w-full text-sm text-white/70">
+          <thead><tr class="text-white/40 text-xs uppercase tracking-wider"><th class="text-left">&nbsp;</th><th class="text-left">Hosted SERP API</th><th class="text-left text-emerald-300">grepapi</th></tr></thead>
+          <tbody>
+            <tr><td class="text-white/50">Pricing</td><td>per-search, scales with volume</td><td class="text-white/90">flat €29/mo · free tier</td></tr>
+            <tr><td class="text-white/50">Who fetches</td><td>their proxy farm (baked into price)</td><td class="text-white/90">your browser, your IP — no proxy bill</td></tr>
+            <tr><td class="text-white/50">Output</td><td>SERP JSON</td><td class="text-white/90">SERP JSON <span class="text-white/50">+ scored, deduped, enriched leads</span></td></tr>
+            <tr><td class="text-white/50">Interface</td><td>REST API</td><td class="text-white/90">CLI / agent-native (JSON, exit codes)</td></tr>
+            <tr><td class="text-white/50">Beyond search</td><td>—</td><td class="text-white/90">Maps, Reddit, LinkedIn + a lead engine</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="text-white/40 text-xs mt-3">The parser is open source (open-serpapi) — you can even self-host the parse layer.</p>
+    </section>
+
+    <!-- more than serp -->
+    <section class="mt-16">
+      <p class="text-white/40 text-sm uppercase tracking-widest mb-3">And it doesn't stop at search</p>
+      <p class="text-white/55 leading-relaxed mb-4">Point it at an ICP and grepapi <span class="text-white/80">scores, qualifies, dedups and enriches</span> results into a ranked worklist — each lead with a channel (phone · email · DM) and a brief your own LLM turns into outreach. It's the SERP API that grew into a GTM engine.</p>
+      <div class="flex flex-wrap gap-2">
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">5 sources: Google · Bing · DuckDuckGo · Maps · Reddit</span>
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">contact enrichment (phone · email · u/author)</span>
+        <span class="pill rounded-full px-3 py-1.5 text-xs text-white/60">ranking that learns what converts</span>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="mt-16 card rounded-2xl p-8 text-center" style="border-color:#10b98144">
+      <h2 class="text-2xl md:text-3xl font-extrabold text-white">Same clean JSON. A tenth of the bill.</h2>
+      <p class="text-white/55 mt-3 max-w-xl mx-auto">Free tier, one install line. Bring your browser; grepapi brings the brains.</p>
+      <div class="mt-6 flex flex-wrap gap-3 justify-center">
+        <a href="https://grepapi.intrane.fr" class="cta inline-flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm">Get grepapi free <span class="text-[10px]">↗</span></a>
+        <a href="https://grepapi.intrane.fr/#quickstart" class="inline-flex items-center gap-2 px-6 py-3 rounded-full pill text-white/70 font-medium text-sm hover:text-white">See the quickstart</a>
+      </div>
+      <div class="term rounded-xl p-4 mt-6 text-left overflow-x-auto max-w-md mx-auto"><pre class="text-xs leading-relaxed"><span class="text-white/40"># one line</span>
+curl -sSL <span class="text-emerald-300">https://grepapi.intrane.fr/install.sh</span> | sh</pre></div>
+    </section>
+
+    <footer class="mt-16 pt-8 border-t border-white/5 text-white/30 text-sm">
+      <p class="mb-2">More on grepapi: <a class="text-emerald-300/70 hover:text-emerald-200" href="https://grepapi.intrane.fr">the product</a> · <a class="text-emerald-300/70 hover:text-emerald-200" href="https://grepapi-case.intrane.fr">the case study</a> · <a class="text-emerald-300/70 hover:text-emerald-200" href="https://agent-lead-engine.intrane.fr">for AI agents</a></p>
+      <p>By <a class="text-white/50 hover:text-white/80" href="https://intrane.fr">intrane.fr</a> — human expertise + machine scale.</p>
+    </footer>
+
+  </div>
+</body>
+</html>

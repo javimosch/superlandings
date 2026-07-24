@@ -5,3 +5,8 @@ data/
 *.log
 tmp
 *.bak
+coverage/
+uploads/
+.playwright-cli/
+ref-saasbackend/node_modules
+ref-saasbackend/.git

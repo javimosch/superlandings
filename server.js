@@ -1,232 +1,56 @@
-console.log("MODE", process.env.MODE || "development");
-require("dotenv").config({ path: `.env.${process.env.MODE}` || ".env" });
-const express = require("express");
-const multer = require("multer");
-const path = require("path");
-const session = require("express-session");
-const FileStore = require("session-file-store")(session);
-const MongoStore = require("connect-mongo");
+console.log('MODE', process.env.MODE || 'development');
 
-// Local modules
-const { ensureDirectories, DATA_DIR, LANDINGS_DIR } = require("./lib/db");
-const { initPersistence, getEngine } = require("./lib/store");
-const {
-  sessionAuth,
-  setCurrentOrganization,
-  handleLogin,
-} = require("./lib/auth");
-const landingsRouter = require("./routes/landings");
-const adminConfigRouter = require("./routes/admin-config");
-const organizationsRouter = require("./routes/organizations");
-const usersRouter = require("./routes/users");
-const migrationRouter = require("./routes/migration");
-const cloudflareRouter = require("./routes/cloudflare");
-const {
-  domainStaticMiddleware,
-  slugStaticMiddleware,
-  serveLandingByDomain,
-  serveLandingBySlug,
-} = require("./routes/serve");
+// Preserve env vars explicitly set on the command line — env files should not override them
+const CLI_ENV = { PORT: process.env.PORT };
 
-// SaaSBackend integration
-const saasbackend =
-  process.env.NODE_ENV === "production"
-    ? require("saasbackend")
-    : require("./ref-saasbackend");
+require('dotenv').config({ path: `.env.${process.env.MODE}` || '.env' });
 
-// Initialize
-const app = express();
-const PORT = process.env.PORT || 3000;
+const fs = require('fs');
 
-// Set app locals for use in views
-app.locals.ADMIN_USERNAME = process.env.ADMIN_USERNAME;
-app.locals.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-
-// Ensure data directories exist
-ensureDirectories();
-
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// SaaSBackend Middleware
-app.use(
-  "/saas",
-  saasbackend.middleware({
-    mongodbUri: process.env.MONGO_URI,
-    skipBodyParser: true,
-  }),
-);
-
-const sessionTtlSeconds = parseInt(
-  process.env.SESSION_TTL_SECONDS || `${24 * 60 * 60}`,
-  10,
-);
-const sessionCookieMaxAgeMs = sessionTtlSeconds * 1000;
-
-const sessionStore =
-  getEngine() === "mongo"
-    ? MongoStore.create({
-        mongoUrl: process.env.MONGO_URI,
-        dbName: process.env.MONGO_DB,
-        collectionName: "sessions",
-        ttl: sessionTtlSeconds,
-      })
-    : new FileStore({
-        path: path.join(DATA_DIR, "sessions"),
-        ttl: 24 * 60 * 60 * 30, // 1 month
-        reapInterval: 60 * 60, // Cleanup every hour
-      });
-
-// Generate secure session secret
-function getSessionSecret() {
-  if (process.env.SESSION_SECRET) {
-    return process.env.SESSION_SECRET;
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    console.error('ERROR: SESSION_SECRET environment variable is required in production!');
-    process.exit(1);
-  }
-
-  // Development: generate a random secret
-  const crypto = require('crypto');
-  const devSecret = crypto.randomBytes(64).toString('hex');
-  console.warn('⚠️  Using generated session secret in development. Set SESSION_SECRET env var for production.');
-  return devSecret;
+if (fs.existsSync(`.env.${process.env.MODE}.local`)) {
+  console.log(`Loading .env.${process.env.MODE}.local`);
+  const localEnv = fs.readFileSync(`.env.${process.env.MODE}.local`, 'utf8');
+  const localEnvVars = localEnv.split('\n').reduce((acc, line) => {
+    // Skip comments and empty lines
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return acc;
+    const eqIdx = line.indexOf('=');
+    if (eqIdx === -1) return acc;
+    const key = line.slice(0, eqIdx).trim();
+    let value = line.slice(eqIdx + 1).trim();
+    // Strip inline comments (e.g., VALUE=foo # comment) — but not inside URLs
+    const commentIdx = value.indexOf(' #');
+    if (commentIdx !== -1) value = value.slice(0, commentIdx).trim();
+    if (key && value) {
+      acc[key] = value;
+      console.log(`Loaded local env var: ${key}=${value.length > 40 ? value.slice(0, 40) + '…' : value}`);
+    }
+    return acc;
+  }, {});
+  Object.assign(process.env, localEnvVars);
 }
 
-// Session middleware
-app.use(
-  session({
-    store: sessionStore,
-    secret: getSessionSecret(),
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: false, //process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      sameSite: "strict",
-      maxAge: sessionCookieMaxAgeMs,
-    },
-  }),
-);
+console.log('NODE_ENV', process.env.NODE_ENV);
 
-// EJS setup - views directory includes both admin views and landing views
-app.set("view engine", "ejs");
-app.set("views", [path.join(__dirname, "views"), LANDINGS_DIR]);
+// Restore CLI env vars so command-line values take precedence over env files
+if (CLI_ENV.PORT) process.env.PORT = CLI_ENV.PORT;
 
-// Multer configuration for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(DATA_DIR, "uploads"));
-  },
-  filename: (req, file, cb) => {
-    // Use a flat filename for the temporary upload directory to avoid issues with slashes
-    const safeName = file.originalname.replace(/[\/\\]/g, "_");
-    cb(null, Date.now() + "-" + safeName);
-  },
-});
-const upload = multer({ storage });
+const { initPersistence } = require('./lib/store');
+const { createApp } = require('./app');
+const { fixCronJobs } = require('./lib/cron-fix');
 
-// Login page route
-app.get("/login", (req, res) => {
-  res.render("admin/login");
-});
+const PORT = process.env.PORT || 3000;
 
-// Login endpoint
-app.post("/api/login", async (req, res) => {
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res.status(400).json({ error: "Username and password required" });
-  }
-
-  const result = await handleLogin(req, username, password);
-
-  if (!result.success) {
-    return res.status(401).json({ error: "Invalid credentials" });
-  }
-
-  res.json({
-    success: true,
-    user: result.user,
-  });
-});
-
-// Logout endpoint
-app.get("/api/logout", sessionAuth, (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ error: "Logout failed" });
-    }
-    res.clearCookie("connect.sid");
-    res.json({ success: true });
-  });
-});
-
-// Root redirect to admin
-app.get("/", (req, res) => {
-  res.redirect("/admin");
-});
-
-// Admin panel route (EJS) with auth check
-app.get("/admin", (req, res) => {
-  if (!req.session || !req.session.user) {
-    return res.redirect("/login");
-  }
-  res.render("admin/index");
-});
-
-// API routes with auth and organization context
-app.use(
-  "/api/landings",
-  sessionAuth,
-  setCurrentOrganization,
-  upload.array("files"),
-  landingsRouter,
-);
-app.use("/api/admin-config", sessionAuth, adminConfigRouter);
-app.use("/api/organizations", sessionAuth, organizationsRouter);
-app.use("/api/users", sessionAuth, usersRouter);
-app.use("/api/migration", sessionAuth, migrationRouter);
-app.use(
-  "/api/cloudflare",
-  sessionAuth,
-  setCurrentOrganization,
-  cloudflareRouter,
-);
-
-// Auth info endpoint
-app.get("/api/auth/me", sessionAuth, setCurrentOrganization, (req, res) => {
-  res.json({
-    isAdmin: req.adminAuth,
-    user: req.currentUser
-      ? { email: req.currentUser.email, isAdmin: req.currentUser.isAdmin }
-      : null,
-    organizations: req.userOrganizations || [],
-    currentOrganization: req.currentOrganization || null,
-    rights: req.currentUser?.rights || [],
-  });
-});
-
-// Static asset middleware for domain-based routing
-app.use("/*", domainStaticMiddleware);
-
-// Static asset middleware for slug-based routing
-app.use("/:slug/*", slugStaticMiddleware);
-
-// Slug-based landing serving
-app.get("/:slug", serveLandingBySlug);
-
-// Start server
 (async () => {
   try {
     await initPersistence();
   } catch (e) {
-    console.error("❌ Persistence initialization failed:", e.message);
+    console.error('Persistence initialization failed:', e.message);
   }
 
+  await fixCronJobs(PORT);
+
+  const app = createApp();
   app.listen(PORT, () => {
     console.log(`SuperLandings server running on http://localhost:${PORT}`);
     console.log(`Admin panel: http://localhost:${PORT}/admin`);

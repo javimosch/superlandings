@@ -16,6 +16,13 @@
   <div class="glow">
   <div class="max-w-3xl mx-auto px-6 pt-20 pb-10">
 
+    <!-- welcome (shown only after a successful checkout, ?welcome=1) -->
+    <div id="welcome-banner" class="hidden mb-10 bg-[#0f1613] border border-emerald-500/25 rounded-2xl p-6">
+      <div class="text-emerald-300 text-sm font-semibold tracking-wide uppercase">You're in 🎉</div>
+      <p class="text-white/80 mt-3">Thanks for subscribing to crmd hosted. <b class="text-white">Check your inbox</b> — we just sent your install command, account slug, and access token to get your workspace moving. Nothing to configure here.</p>
+      <p class="text-white/40 text-sm mt-3">No email within a few minutes? Check spam, or just reply to <a href="mailto:hello@intrane.fr" class="text-emerald-300 hover:text-emerald-200">hello@intrane.fr</a> and I'll sort it by hand — we're still early and I read every one of these.</p>
+    </div>
+
     <!-- hero -->
     <p class="text-emerald-400/80 text-xs tracking-[.2em] uppercase mb-4">Open source · agent-first · one binary</p>
     <h1 class="text-4xl md:text-5xl font-black text-white leading-tight">The CRM your agent runs.</h1>
@@ -124,11 +131,16 @@ crm serve   <span class="text-white/40"># webhook: email replies + call outcomes
 
   </div>
   </div>
+  <script>
+    if (new URLSearchParams(location.search).get('welcome') === '1') {
+      document.getElementById('welcome-banner').classList.remove('hidden');
+    }
+  </script>
   <!-- analytics (SuperInsights) -->
   <script src="https://superinsights.coolify.intrane.fr/sdk/superinsights.js"></script>
   <script>
     if (window.SuperInsights) {
-      SuperInsights.init('pk_e06fb3e1202550226bebdac1fdcfceb82319f2cc4a443f83dd0f9fe0ded3c00a',
+      SuperInsights.init('pk_f7ffe2187785c359d4ea041b8d2691178a81e318c348013e97378c2e7f12816c',
         { apiUrl: 'https://superinsights.coolify.intrane.fr' });
     }
   </script>

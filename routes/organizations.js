@@ -1,5 +1,5 @@
 const express = require('express');
-const { readDB, writeDB } = require('../lib/store');
+const { readDB, readDBMeta, writeDB } = require('../lib/store');
 
 const router = express.Router();
 
@@ -9,15 +9,15 @@ router.get('/', async (req, res) => {
     // Return only user's organizations
     return res.json(req.userOrganizations || []);
   }
-  
-  const db = await readDB();
+
+  const db = await readDBMeta();
   res.json(db.organizations || []);
 });
 
 // Get single organization
 router.get('/:id', async (req, res) => {
   const { id } = req.params;
-  const db = await readDB();
+  const db = await readDBMeta();
   const orgs = db.organizations || [];
   const org = orgs.find(o => o.id === id);
   
