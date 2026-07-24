@@ -20,6 +20,7 @@ app.component('editor-view', {
     const blockData = ref([]);
     const previewWidth = ref('100%'); // 100% | <number>px
     const previewWidthNumber = computed(() => previewWidth.value === '100%' ? 1400 : parseInt(previewWidth.value) || 375);
+    const zen = ref(false); // hide sidebars and maximize the active content area
     let editor = null;
 
     const isHtml = computed(() => props.landing.type === 'html');
@@ -180,7 +181,7 @@ app.component('editor-view', {
     watch(() => props.landing?.id, load);
 
     return {
-      tab, content, loading, saving, dirty, save, switchTab, previewSrc, openPreviewTab, previewWidth, previewWidthNumber, emit,
+      tab, content, loading, saving, dirty, save, switchTab, previewSrc, openPreviewTab, previewWidth, previewWidthNumber, zen, emit,
       aiPrompt, generatingAi, showAi, aiSummary, runAiEdit, revertAiEdit, runAiGenerate, toast,
       isHtml, isTraefik, isEjs, isVirtual,
       editEjsFiles, editEjsZip, editVirtualFiles, showFileUpload,
@@ -198,8 +199,8 @@ app.component('editor-view', {
       <!-- AI / Code mode (or non-HTML types) -->
       <template v-else>
 
-      <!-- Left sidebar: metadata + actions + AI + code -->
-      <div style="width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto;padding-right:4px">
+      <!-- Left sidebar: metadata + actions + AI + code (hidden in zen mode for HTML/Traefik) -->
+      <div v-if="!zen || isEjs || isVirtual" style="width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto;padding-right:4px">
 
         <div>
           <h1 class="font-serif" style="font-size:22px;letter-spacing:-0.02em;line-height:1.2;margin:0">{{landing.name}}</h1>
@@ -284,6 +285,9 @@ app.component('editor-view', {
             <i class="fa-solid fa-code"></i> Code</button>
           <div style="flex:1"></div>
           <button v-if="tab==='preview'" class="btn btn-ghost" @click="openPreviewTab" style="margin:4px 0;font-size:12px"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open in new tab</button>
+          <button class="btn btn-ghost" @click="zen=!zen" style="margin:4px 0;font-size:12px" :title="zen?'Exit zen mode':'Zen mode'">
+            <i class="fa-solid" :class="zen?'fa-compress':'fa-expand'"></i> {{zen?'Exit zen':'Zen'}}
+          </button>
         </div>
 
         <div v-if="loading" style="flex:1;display:flex;align-items:center;justify-content:center"><p class="text-muted">Loading…</p></div>
@@ -304,10 +308,10 @@ app.component('editor-view', {
         <!-- Code editor + mobile preview split -->
         <div v-show="tab==='code'" style="flex:1;display:flex;gap:12px;min-height:0">
           <div id="codemirror-editor" style="flex:1;min-width:0;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden"></div>
-          <div style="width:390px;flex-shrink:0;display:flex;flex-direction:column;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden;background:var(--surface)">
+          <div :style="{ flex: zen ? '1 1 0' : '0 0 390px', minWidth: '0', display: 'flex', flexDirection: 'column', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 6px 6px', overflow: 'hidden', background: 'var(--surface)' }">
             <div style="padding:6px 12px;border-bottom:1px solid var(--border);font-size:12px;font-weight:600"><i class="fa-solid fa-mobile-screen"></i> Mobile preview</div>
             <div style="flex:1;overflow:auto;display:flex;justify-content:center;background:var(--canvas)">
-              <iframe :srcdoc="content" style="width:375px;height:100%;border:none;background:#fff" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>
+              <iframe :srcdoc="content" :style="{ width: zen ? '100%' : '375px', height: '100%', border: 'none', background: '#fff' }" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>
             </div>
           </div>
         </div>

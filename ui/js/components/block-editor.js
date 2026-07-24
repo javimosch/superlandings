@@ -15,7 +15,7 @@ app.component('block-editor', {
     const selectedIdx = ref(null);
     const showPicker = ref(false);
     const dirty = ref(false);
-    const widePreview = ref(false);
+    const zenMode = ref(false);
     const previewFrame = { current: null }; // non-reactive container so template ref function can set it
     const savedScroll = ref({ top: 0, left: 0 });
     let dragSrcIdx = null;
@@ -245,7 +245,7 @@ app.component('block-editor', {
     };
 
     return {
-      blocks, selectedIdx, selectedBlock, selectedDef, showPicker, dirty, widePreview,
+      blocks, selectedIdx, selectedBlock, selectedDef, showPicker, dirty, zenMode,
       blocksByCategory, previewFrame, iframeSrc,
       addBlock, removeBlock, duplicateBlock, moveBlock,
       onDragStart, onDragOver, onDrop,
@@ -271,6 +271,9 @@ app.component('block-editor', {
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span v-if="dirty" class="tag tag-yellow" style="font-size:10px">Unsaved</span>
+          <button class="btn btn-ghost" @click="zenMode=!zenMode" :title="zenMode?'Exit zen mode':'Zen mode'" style="font-size:12px;padding:6px 10px">
+            <i class="fa-solid" :class="zenMode?'fa-compress':'fa-expand'"></i> {{zenMode?'Exit zen':'Zen'}}
+          </button>
           <button class="btn btn-primary" @click="save" :disabled="!dirty" style="font-size:12px;padding:6px 12px"><i class="fa-solid fa-floppy-disk"></i> Save</button>
         </div>
       </div>
@@ -278,7 +281,7 @@ app.component('block-editor', {
       <div style="display:flex;flex:1;min-height:0;gap:12px;align-items:stretch">
 
       <!-- Left sidebar: block list + add button -->
-      <div v-if="!widePreview" style="width:240px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px">
+      <div v-if="!zenMode" style="width:240px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <span style="font-size:13px;font-weight:600">Blocks</span>
         </div>
@@ -317,7 +320,7 @@ app.component('block-editor', {
       </div>
 
       <!-- Middle: inline edit form (when a block is selected) -->
-      <div v-if="!widePreview && selectedBlock && selectedDef" style="width:280px;flex-shrink:0;overflow-y:auto;padding-right:4px">
+      <div v-if="!zenMode && selectedBlock && selectedDef" style="width:280px;flex-shrink:0;overflow-y:auto;padding-right:4px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px">
           <div style="display:flex;flex-direction:column;min-width:0;flex:1">
             <input :value="selectedBlock.name" @input="updateBlockName(selectedIdx, $event.target.value)" :placeholder="selectedDef.label"
@@ -377,9 +380,6 @@ app.component('block-editor', {
         <div style="display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);flex-shrink:0">
           <span style="padding:8px 16px;font-weight:500;font-size:13px"><i class="fa-solid fa-eye"></i> Preview</span>
           <div style="flex:1"></div>
-          <button class="btn btn-ghost" @click="widePreview=!widePreview" :title="widePreview?'Show sidebars':'Hide sidebars for wider preview'" style="margin:4px 0;font-size:12px">
-            <i class="fa-solid" :class="widePreview?'fa-compress':'fa-expand'"></i> {{widePreview?'Collapse':'Expand'}}
-          </button>
           <button class="btn btn-ghost" @click="openPreviewTab" style="margin:4px 0;font-size:12px"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open in new tab</button>
         </div>
         <div style="flex:1;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">
