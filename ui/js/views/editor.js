@@ -190,10 +190,10 @@ app.component('editor-view', {
     };
   },
   template: `
-    <div style="display:flex;gap:16px;height:calc(100vh - 80px);align-items:stretch">
+    <div :style="{ display:'flex', gap:'16px', alignItems:'stretch', height: zen?'100vh':'calc(100vh - 80px)', position: zen?'fixed':'static', top:0, left:0, width: zen?'100%':'auto', zIndex: zen?1000:'auto', background: 'var(--canvas)' }">
 
       <!-- Block editor mode (HTML only) -->
-      <block-editor v-if="isHtml && editorMode==='blocks'" :blockData="blockData" :landing="landing" :mode="editorMode"
+      <block-editor v-if="isHtml && editorMode==='blocks'" v-model:zen="zen" :blockData="blockData" :landing="landing" :mode="editorMode"
         style="flex:1;min-width:0" @save="saveBlocks" @toast="(m,t)=>toast(m,t)" @switch-mode="switchMode"></block-editor>
 
       <!-- AI / Code mode (or non-HTML types) -->

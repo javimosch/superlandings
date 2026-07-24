@@ -1,9 +1,9 @@
 /* Block editor component — visual no-code editor for non-technical users
-   Props: blockData (array), landing (object), mode (string)
-   Emits: 'save' (compiledHtml, blockData), 'toast' (msg, type), 'switch-mode' (newMode) */
+   Props: blockData (array), landing (object), mode (string), zen (boolean)
+   Emits: 'save' (compiledHtml, blockData), 'toast' (msg, type), 'switch-mode' (newMode), 'update:zen' (boolean) */
 app.component('block-editor', {
-  props: ['blockData', 'landing', 'mode'],
-  emits: ['save', 'toast', 'switch-mode'],
+  props: ['blockData', 'landing', 'mode', 'zen'],
+  emits: ['save', 'toast', 'switch-mode', 'update:zen'],
   setup(props, { emit }) {
     // Local aliases for window globals so the template doesn't reference window directly
     const SL_BLOCKS = window.SL_BLOCKS;
@@ -15,7 +15,8 @@ app.component('block-editor', {
     const selectedIdx = ref(null);
     const showPicker = ref(false);
     const dirty = ref(false);
-    const zenMode = ref(false);
+    const zenMode = computed({ get: () => props.zen, set: (v) => emit('update:zen', v) });
+    const toggleZen = () => { zenMode.value = !zenMode.value; };
     const previewFrame = { current: null }; // non-reactive container so template ref function can set it
     const savedScroll = ref({ top: 0, left: 0 });
     let dragSrcIdx = null;
@@ -250,13 +251,13 @@ app.component('block-editor', {
       addBlock, removeBlock, duplicateBlock, moveBlock,
       onDragStart, onDragOver, onDrop,
       updateProp, updateBlockName, addListItem, removeListItem, updateListItem,
-      save, openPreviewTab, onPreviewLoad, markDirty, emit,
+      save, openPreviewTab, onPreviewLoad, markDirty, toggleZen, emit,
       // expose helper for template
       getBlock: SL_BLOCK_GET,
     };
   },
   template: `
-    <div style="display:flex;flex-direction:column;height:calc(100vh - 80px)">
+    <div :style="{ display:'flex', flexDirection:'column', height: zenMode?'100vh':'calc(100vh - 80px)' }">
 
       <!-- Header: landing info, mode toggle, save -->
       <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0;padding-bottom:10px;gap:12px">
@@ -271,7 +272,7 @@ app.component('block-editor', {
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span v-if="dirty" class="tag tag-yellow" style="font-size:10px">Unsaved</span>
-          <button class="btn btn-ghost" @click="zenMode=!zenMode" :title="zenMode?'Exit zen mode':'Zen mode'" style="font-size:12px;padding:6px 10px">
+          <button class="btn btn-ghost" @click="toggleZen" :title="zenMode?'Exit zen mode':'Zen mode'" style="font-size:12px;padding:6px 10px">
             <i class="fa-solid" :class="zenMode?'fa-compress':'fa-expand'"></i> {{zenMode?'Exit zen':'Zen'}}
           </button>
           <button class="btn btn-primary" @click="save" :disabled="!dirty" style="font-size:12px;padding:6px 12px"><i class="fa-solid fa-floppy-disk"></i> Save</button>
