@@ -1,9 +1,9 @@
 /* Block editor component — visual no-code editor for non-technical users
-   Props: blockData (array), landing (object)
-   Emits: 'save' (compiledHtml, blockData), 'toast' (msg, type) */
+   Props: blockData (array), landing (object), mode (string)
+   Emits: 'save' (compiledHtml, blockData), 'toast' (msg, type), 'switch-mode' (newMode) */
 app.component('block-editor', {
-  props: ['blockData', 'landing'],
-  emits: ['save', 'toast'],
+  props: ['blockData', 'landing', 'mode'],
+  emits: ['save', 'toast', 'switch-mode'],
   setup(props, { emit }) {
     // Local aliases for window globals so the template doesn't reference window directly
     const SL_BLOCKS = window.SL_BLOCKS;
@@ -256,13 +256,31 @@ app.component('block-editor', {
     };
   },
   template: `
-    <div style="display:flex;gap:12px;height:calc(100vh - 80px);align-items:stretch">
+    <div style="display:flex;flex-direction:column;height:calc(100vh - 80px)">
+
+      <!-- Header: landing info, mode toggle, save -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0;padding-bottom:10px;gap:12px">
+        <div>
+          <h1 class="font-serif" style="font-size:18px;letter-spacing:-0.02em;line-height:1.2;margin:0">{{landing.name}}</h1>
+          <p class="font-mono text-muted" style="font-size:11px;margin:2px 0 0">/{{landing.slug}}</p>
+        </div>
+        <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+          <button @click="$emit('switch-mode','blocks')" :style="mode==='blocks'?'background:var(--accent);color:#fff;border:none;padding:6px 12px;font-size:11px;cursor:pointer':'background:transparent;border:none;padding:6px 12px;font-size:11px;cursor:pointer;color:var(--ink-muted)'"><i class="fa-solid fa-cubes"></i> Blocks</button>
+          <button @click="$emit('switch-mode','ai')" :style="mode==='ai'?'background:var(--accent);color:#fff;border:none;padding:6px 12px;font-size:11px;cursor:pointer':'background:transparent;border:none;padding:6px 12px;font-size:11px;cursor:pointer;color:var(--ink-muted)'"><i class="fa-solid fa-wand-magic-sparkles"></i> AI</button>
+          <button @click="$emit('switch-mode','code')" :style="mode==='code'?'background:var(--accent);color:#fff;border:none;padding:6px 12px;font-size:11px;cursor:pointer':'background:transparent;border:none;padding:6px 12px;font-size:11px;cursor:pointer;color:var(--ink-muted)'"><i class="fa-solid fa-code"></i> Code</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span v-if="dirty" class="tag tag-yellow" style="font-size:10px">Unsaved</span>
+          <button class="btn btn-primary" @click="save" :disabled="!dirty" style="font-size:12px;padding:6px 12px"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+        </div>
+      </div>
+
+      <div style="display:flex;flex:1;min-height:0;gap:12px;align-items:stretch">
 
       <!-- Left sidebar: block list + add button -->
       <div v-if="!widePreview" style="width:240px;flex-shrink:0;display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <span style="font-size:13px;font-weight:600">Blocks</span>
-          <span v-if="dirty" class="tag tag-yellow" style="font-size:9px">Unsaved</span>
         </div>
 
         <div v-if="blocks.length===0" class="card" style="padding:20px;text-align:center">
@@ -296,9 +314,6 @@ app.component('block-editor', {
 
         <button class="btn btn-secondary" @click="showPicker=true" style="width:100%;font-size:12px;margin-top:4px">
           <i class="fa-solid fa-plus"></i> Add block</button>
-
-        <button v-if="blocks.length>0" class="btn btn-primary" @click="save" :disabled="!dirty" style="width:100%;font-size:12px;margin-top:4px">
-          <i class="fa-solid fa-floppy-disk"></i> {{dirty?'Save page':'Saved'}}</button>
       </div>
 
       <!-- Middle: inline edit form (when a block is selected) -->
@@ -370,6 +385,8 @@ app.component('block-editor', {
         <div style="flex:1;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">
           <iframe :ref="(el)=>{ if (el && previewFrame) previewFrame.current = el }" :srcdoc="iframeSrc" @load="onPreviewLoad" style="width:100%;height:100%;border:none" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>
         </div>
+      </div>
+
       </div>
 
       <!-- Block picker modal -->

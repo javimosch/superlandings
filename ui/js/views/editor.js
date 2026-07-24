@@ -33,8 +33,7 @@ app.component('editor-view', {
         content.value = data.content || '';
         original.value = content.value;
         blockData.value = data.blockData || [];
-        // Auto-select blocks mode if blockData exists and content looks block-generated
-        if (blockData.value.length > 0) editorMode.value = 'blocks';
+        // Keep editorMode as-is (default 'ai'); user can switch to blocks via the mode toggle
       } catch (e) { toast('Could not load page content', 'error'); }
       finally { loading.value = false; }
     };
@@ -191,8 +190,8 @@ app.component('editor-view', {
     <div style="display:flex;gap:16px;height:calc(100vh - 80px);align-items:stretch">
 
       <!-- Block editor mode (HTML only) -->
-      <block-editor v-if="isHtml && editorMode==='blocks'" :blockData="blockData" :landing="landing"
-        style="flex:1;min-width:0" @save="saveBlocks" @toast="(m,t)=>toast(m,t)"></block-editor>
+      <block-editor v-if="isHtml && editorMode==='blocks'" :blockData="blockData" :landing="landing" :mode="editorMode"
+        style="flex:1;min-width:0" @save="saveBlocks" @toast="(m,t)=>toast(m,t)" @switch-mode="switchMode"></block-editor>
 
       <!-- AI / Code mode (or non-HTML types) -->
       <template v-else>
