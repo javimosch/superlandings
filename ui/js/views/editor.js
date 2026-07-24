@@ -42,7 +42,7 @@ app.component('editor-view', {
       nextTick(() => {
         const el = document.getElementById('codemirror-editor');
         if (!el) return;
-        if (editor) { editor.setValue(content.value); return; }
+        if (editor) { editor.setValue(content.value); nextTick(() => editor.refresh()); return; }
         editor = CodeMirror(el, {
           value: content.value,
           mode: isTraefik.value ? 'yaml' : 'htmlmixed',
@@ -264,12 +264,6 @@ app.component('editor-view', {
           </div>
         </div>
 
-        <!-- Code editor in sidebar (for HTML + Traefik) -->
-        <div v-if="(isHtml||isTraefik)&&tab==='code'" style="flex:1;display:flex;flex-direction:column;min-height:200px">
-          <div style="font-size:11px;color:var(--ink-muted);margin-bottom:4px;padding:0 2px">Code editor</div>
-          <div id="codemirror-editor" style="flex:1;border:1px solid var(--border);border-radius:6px;overflow:hidden"></div>
-        </div>
-
         <!-- EJS/Virtual info -->
         <div v-if="isEjs||isVirtual" class="card" style="padding:16px;text-align:center">
           <i class="fa-regular fa-folder-open" style="font-size:24px;color:var(--ink-faint);margin-bottom:8px"></i>
@@ -296,10 +290,8 @@ app.component('editor-view', {
           <iframe :src="previewSrc" style="width:100%;height:100%;border:none" sandbox="allow-same-origin allow-scripts allow-popups"></iframe>
         </div>
 
-        <!-- Code editor full height (when code tab active, editor is in sidebar) -->
-        <div v-else style="flex:1;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;background:var(--surface);display:flex;align-items:center;justify-content:center">
-          <p class="text-muted" style="font-size:13px">Code editor is in the sidebar ←</p>
-        </div>
+        <!-- Code editor full height in the right pane code tab -->
+        <div v-show="tab==='code'" id="codemirror-editor" style="flex:1;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden"></div>
       </div>
 
       <!-- EJS/Virtual: no right pane, just sidebar -->
