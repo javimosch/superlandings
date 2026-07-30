@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent-First CLI Specs — Five conventions for agent-driven CLIs</title>
+<meta name="description" content="Five open conventions that make any CLI fully agent-first: output contract, embedded guide, dual-write feedback, content-hash self-update, honest usage telemetry. Adopt any subset in 30 minutes.">
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+  .dot-grid { background-image: radial-gradient(circle at 1px 1px, rgba(34,197,94,0.08) 1px, transparent 0); background-size: 24px 24px; }
+  .gradient-text { background: linear-gradient(135deg, #22c55e 0%, #86efac 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .card-glow { box-shadow: 0 0 0 1px rgba(34,197,94,0.1), 0 4px 20px -4px rgba(34,197,94,0.1); }
+  .card-glow:hover { box-shadow: 0 0 0 1px rgba(34,197,94,0.3), 0 8px 30px -4px rgba(34,197,94,0.2); }
+  .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+</style>
+<script defer src="https://vigie.intrane.fr/vigie.js"></script></head>
+<body class="bg-[#050505] text-gray-200 antialiased">
+
+<!-- Hero -->
+<section class="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
+  <div class="absolute inset-0 dot-grid opacity-40"></div>
+  <div class="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#050505]"></div>
+  <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#22c55e]/10 rounded-full blur-[120px]"></div>
+
+  <div class="container mx-auto px-4 relative z-10 text-center">
+    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 mb-6">
+      <span class="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse"></span>
+      <span class="text-sm font-medium text-[#86efac]">5 specs &middot; MIT &middot; language-neutral</span>
+    </div>
+    <h1 class="text-5xl md:text-6xl font-black tracking-tight mb-6">
+      <span class="gradient-text">Agent-First CLI Specs</span>
+    </h1>
+    <p class="text-xl text-gray-400 max-w-2xl mx-auto mb-8 leading-relaxed">
+      Five open conventions that make any CLI fully agent-first: learnable, drivable, reportable, and self-updating — and finally, measurable. Adopt any subset in 30 minutes per spec.
+    </p>
+    <div class="flex flex-wrap justify-center gap-3">
+      <a href="#specs" class="px-6 py-3 rounded-lg bg-[#22c55e] hover:bg-[#16a34a] text-black font-bold transition-all">
+        Explore the specs
+      </a>
+      <a href="https://blog.intrane.fr/agent-first-cli-specs" target="_blank" class="px-6 py-3 rounded-lg border border-gray-700 hover:border-[#22c55e]/50 text-gray-300 hover:text-white font-medium transition-all">
+        Read the blog post &rarr;
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- The lifecycle -->
+<section class="py-16 border-t border-gray-900">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold mb-3">The agent lifecycle</h2>
+      <p class="text-gray-500 max-w-xl mx-auto">An agent lands on a fresh machine with only the binary. Five commands, five specs.</p>
+    </div>
+    <div class="max-w-3xl mx-auto">
+      <div class="font-mono text-sm bg-[#0a0a0a] border border-gray-800 rounded-xl p-6 leading-relaxed">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-[#22c55e] font-bold">myapp guide</span>
+          <span class="text-gray-600"># learn the tool &mdash; embedded mental model</span>
+        </div>
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-[#22c55e] font-bold">myapp help-json</span>
+          <span class="text-gray-600"># discover commands &mdash; machine-readable catalog</span>
+        </div>
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-[#22c55e] font-bold">myapp leads --json</span>
+          <span class="text-gray-600"># drive the tool &mdash; data on stdout, errors typed</span>
+        </div>
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-[#22c55e] font-bold">myapp feedback "&hellip;"</span>
+          <span class="text-gray-600"># report issues &mdash; dual-write to app + relay</span>
+        </div>
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-[#22c55e] font-bold">myapp update</span>
+          <span class="text-gray-600"># stay current &mdash; content-hash, atomic swap</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-[#22c55e] font-bold">myapp telemetry</span>
+          <span class="text-gray-600"># and the author finally knows it ran &mdash; disclosed, opt-out</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- The four specs -->
+<section id="specs" class="py-20 border-t border-gray-900 scroll-mt-20">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl font-bold mb-4">The five specs</h2>
+      <p class="text-gray-500 max-w-xl mx-auto">Each is independently adoptable. Together they make a CLI fully agent-first.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+
+      <!-- cli-output-spec -->
+      <div class="card-glow bg-[#0a0a0a] border border-gray-800 rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-xs font-mono text-[#22c55e] border border-[#22c55e]/20">foundational</span>
+          <span class="px-2.5 py-1 rounded-md bg-gray-800 text-xs font-mono text-gray-400 border border-gray-700">output</span>
+        </div>
+        <h3 class="text-2xl font-bold text-white mb-3">cli-output-spec</h3>
+        <p class="text-gray-400 mb-6 leading-relaxed">
+          The output contract. stdout = data only (JSON, parseable, versioned). stderr = context only (progress, logs). Semantic exit codes (80&ndash;119). Typed errors with <code class="text-[#86efac]">recoverable</code> and <code class="text-[#86efac]">suggestions</code>. <code class="text-[#86efac]">help-json</code> introspection. No internal retries.
+        </p>
+        <div class="flex flex-wrap gap-2 mb-6">
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">stdout=data</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">exit codes</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">typed errors</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">help-json</span>
+        </div>
+        <a href="https://github.com/javimosch/cli-output-spec" target="_blank" class="inline-flex items-center gap-2 text-[#22c55e] hover:text-[#86efac] font-medium text-sm">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          github.com/javimosch/cli-output-spec
+        </a>
+      </div>
+
+      <!-- cli-guide-spec -->
+      <div class="card-glow bg-[#0a0a0a] border border-gray-800 rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-xs font-mono text-[#22c55e] border border-[#22c55e]/20">capability</span>
+          <span class="px-2.5 py-1 rounded-md bg-gray-800 text-xs font-mono text-gray-400 border border-gray-700">guide</span>
+        </div>
+        <h3 class="text-2xl font-bold text-white mb-3">cli-guide-spec</h3>
+        <p class="text-gray-400 mb-6 leading-relaxed">
+          The embedded mental model. <code class="text-[#86efac]">&lt;tool&gt; guide</code> bakes the full operator manual into the binary &mdash; the model, the loop, the concepts, the gotchas. An agent reads it once and drives the tool with no external docs. Optional HTTP: <code class="text-[#86efac]">GET /guide</code> + <code class="text-[#86efac]">GET /llms.txt</code>.
+        </p>
+        <div class="flex flex-wrap gap-2 mb-6">
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">embedded</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">JSON by default</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">--human</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">llms.txt</span>
+        </div>
+        <a href="https://github.com/javimosch/cli-guide-spec" target="_blank" class="inline-flex items-center gap-2 text-[#22c55e] hover:text-[#86efac] font-medium text-sm">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          github.com/javimosch/cli-guide-spec
+        </a>
+      </div>
+
+      <!-- cli-feedback-spec -->
+      <div class="card-glow bg-[#0a0a0a] border border-gray-800 rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-xs font-mono text-[#22c55e] border border-[#22c55e]/20">capability</span>
+          <span class="px-2.5 py-1 rounded-md bg-gray-800 text-xs font-mono text-gray-400 border border-gray-700">feedback</span>
+        </div>
+        <h3 class="text-2xl font-bold text-white mb-3">cli-feedback-spec</h3>
+        <p class="text-gray-400 mb-6 leading-relaxed">
+          The dual-write relay. <code class="text-[#86efac]">&lt;tool&gt; feedback</code> sends feedback to the tool's own endpoint AND a central relay &mdash; same idempotency key, never fails the caller. Open submission, admin-gated reads. <code class="text-[#86efac]">FEEDBACK_RELAY=off</code> to opt out.
+        </p>
+        <div class="flex flex-wrap gap-2 mb-6">
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">dual-write</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">idempotent</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">never-fail</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">swappable relay</span>
+        </div>
+        <a href="https://github.com/javimosch/cli-feedback-spec" target="_blank" class="inline-flex items-center gap-2 text-[#22c55e] hover:text-[#86efac] font-medium text-sm">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          github.com/javimosch/cli-feedback-spec
+        </a>
+      </div>
+
+      <!-- cli-update-spec -->
+      <div class="card-glow bg-[#0a0a0a] border border-gray-800 rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-xs font-mono text-[#22c55e] border border-[#22c55e]/20">capability</span>
+          <span class="px-2.5 py-1 rounded-md bg-gray-800 text-xs font-mono text-gray-400 border border-gray-700">update</span>
+        </div>
+        <h3 class="text-2xl font-bold text-white mb-3">cli-update-spec</h3>
+        <p class="text-gray-400 mb-6 leading-relaxed">
+          Content-hash self-update. <code class="text-[#86efac]">&lt;tool&gt; update</code> downloads, verifies <code class="text-[#86efac]">sha256[:12]</code>, smoke-tests, atomically swaps (current &rarr; <code class="text-[#86efac]">.bak</code>, new &rarr; in place). Passive stderr nudge when stale. No silent auto-update &mdash; manual by default.
+        </p>
+        <div class="flex flex-wrap gap-2 mb-6">
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">content-hash</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">verify-then-swap</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">smoke test</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">.bak rollback</span>
+        </div>
+        <a href="https://github.com/javimosch/cli-update-spec" target="_blank" class="inline-flex items-center gap-2 text-[#22c55e] hover:text-[#86efac] font-medium text-sm">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          github.com/javimosch/cli-update-spec
+        </a>
+      </div>
+
+      <!-- cli-telemetry-spec -->
+      <div class="card-glow bg-[#0a0a0a] border border-gray-800 rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-xs font-mono text-[#22c55e] border border-[#22c55e]/20">capability</span>
+          <span class="px-2.5 py-1 rounded-md bg-gray-800 text-xs font-mono text-gray-400 border border-gray-700">telemetry</span>
+          <span class="px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-xs font-mono text-[#22c55e] border border-[#22c55e]/20">new</span>
+        </div>
+        <h3 class="text-2xl font-bold text-white mb-3">cli-telemetry-spec</h3>
+        <p class="text-gray-400 mb-6 leading-relaxed">
+          An honest usage signal. Downloads, clones and stars all report the same zero whether nobody wants your tool or the install command has been broken since the first release &mdash; and an agent-operated CLI has no human who will ever file an issue. One <code class="text-[#86efac]">POST</code>, seven non-identifying fields, disclosed on <strong class="text-gray-300">stderr before the first send</strong>, and <code class="text-[#86efac]">&lt;tool&gt; telemetry</code> prints the <em>real</em> next payload so a reviewer verifies instead of trusting. <code class="text-[#86efac]">DO_NOT_TRACK=1</code> honoured; CI defaults to off.
+        </p>
+        <div class="flex flex-wrap gap-2 mb-6">
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">disclosed-first</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">allow-list</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">opt-out</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">never-blocks</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">inspectable</span>
+        </div>
+        <a href="https://github.com/javimosch/cli-telemetry-spec" target="_blank" class="inline-flex items-center gap-2 text-[#22c55e] hover:text-[#86efac] font-medium text-sm">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          github.com/javimosch/cli-telemetry-spec
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Reference implementations -->
+<section class="py-20 border-t border-gray-900">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold mb-3">Reference implementations</h2>
+      <p class="text-gray-500 max-w-xl mx-auto">Same contract, two languages, five tools. Each is a worked example.</p>
+    </div>
+    <div class="max-w-3xl mx-auto overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-800">
+            <th class="text-left py-3 px-4 text-gray-400 font-medium">Tool</th>
+            <th class="text-left py-3 px-4 text-gray-400 font-medium">Language</th>
+            <th class="text-center py-3 px-4 text-[#22c55e]">output</th>
+            <th class="text-center py-3 px-4 text-[#22c55e]">guide</th>
+            <th class="text-center py-3 px-4 text-[#22c55e]">feedback</th>
+            <th class="text-center py-3 px-4 text-[#22c55e]">update</th>
+          </tr>
+        </thead>
+        <tbody class="font-mono">
+          <tr class="border-b border-gray-900 hover:bg-[#0a0a0a]">
+            <td class="py-3 px-4"><a href="https://github.com/javimosch/grepapi" target="_blank" class="text-[#86efac] hover:underline">grepapi</a></td>
+            <td class="py-3 px-4 text-gray-500">machin + shell</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+          </tr>
+          <tr class="border-b border-gray-900 hover:bg-[#0a0a0a]">
+            <td class="py-3 px-4"><a href="https://github.com/javimosch/mago" target="_blank" class="text-[#86efac] hover:underline">mago</a></td>
+            <td class="py-3 px-4 text-gray-500">Go</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]"><td class="py-3 px-4 text-center text-gray-700">&mdash;</td>#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+          </tr>
+          <tr class="border-b border-gray-900 hover:bg-[#0a0a0a]">
+            <td class="py-3 px-4"><a href="https://github.com/javimosch/automaintainer" target="_blank" class="text-[#86efac] hover:underline">automaintainer</a></td>
+            <td class="py-3 px-4 text-gray-500">Go</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]"><td class="py-3 px-4 text-center text-gray-700">&mdash;</td>#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+          </tr>
+          <tr class="border-b border-gray-900 hover:bg-[#0a0a0a]">
+            <td class="py-3 px-4"><a href="https://github.com/javimosch/remotecmd" target="_blank" class="text-[#86efac] hover:underline">remotecmd</a></td>
+            <td class="py-3 px-4 text-gray-500">Go</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+          </tr>
+          <tr class="hover:bg-[#0a0a0a]">
+            <td class="py-3 px-4"><a href="https://github.com/javimosch/chatsnip" target="_blank" class="text-[#86efac] hover:underline">chatsnip</a></td>
+            <td class="py-3 px-4 text-gray-500">machin</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
+            <td class="py-3 px-4 text-center text-[#22c55e]"><td class="py-3 px-4 text-center text-gray-700">&mdash;</td>#10003;</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Design principles -->
+<section class="py-20 border-t border-gray-900">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold mb-3">Shared design principles</h2>
+      <p class="text-gray-500 max-w-xl mx-auto">The old Unix philosophy, tightened for LLMs.</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+      <div class="bg-[#0a0a0a] border border-gray-800 rounded-xl p-6">
+        <div class="text-[#22c55e] text-2xl mb-2">&#9670;</div>
+        <h3 class="font-bold text-white mb-2">Small on purpose</h3>
+        <p class="text-sm text-gray-500">One command, one endpoint, one JSON shape. Addable in 30 minutes.</p>
+      </div>
+      <div class="bg-[#0a0a0a] border border-gray-800 rounded-xl p-6">
+        <div class="text-[#22c55e] text-2xl mb-2">&#9670;</div>
+        <h3 class="font-bold text-white mb-2">Language-neutral</h3>
+        <p class="text-sm text-gray-500">The contract is the JSON shape and the behavior, not the implementation.</p>
+      </div>
+      <div class="bg-[#0a0a0a] border border-gray-800 rounded-xl p-6">
+        <div class="text-[#22c55e] text-2xl mb-2">&#9670;</div>
+        <h3 class="font-bold text-white mb-2">Independent</h3>
+        <p class="text-sm text-gray-500">Each spec is adoptable alone. No cross-dependencies.</p>
+      </div>
+      <div class="bg-[#0a0a0a] border border-gray-800 rounded-xl p-6">
+        <div class="text-[#22c55e] text-2xl mb-2">&#9670;</div>
+        <h3 class="font-bold text-white mb-2">Agent-first</h3>
+        <p class="text-sm text-gray-500">JSON by default, stderr for context, semantic exit codes, self-describing.</p>
+      </div>
+      <div class="bg-[#0a0a0a] border border-gray-800 rounded-xl p-6">
+        <div class="text-[#22c55e] text-2xl mb-2">&#9670;</div>
+        <h3 class="font-bold text-white mb-2">Unix-native</h3>
+        <p class="text-sm text-gray-500">stdout is a pipe-friendly API. stderr is ignorable context. Exit codes are actionable.</p>
+      </div>
+      <div class="bg-[#0a0a0a] border border-gray-800 rounded-xl p-6">
+        <div class="text-[#22c55e] text-2xl mb-2">&#9670;</div>
+        <h3 class="font-bold text-white mb-2">MIT licensed</h3>
+        <p class="text-sm text-gray-500">Copy them, fork them, adopt them. No attribution required.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="py-12 border-t border-gray-900">
+  <div class="container mx-auto px-4 text-center">
+    <div class="flex justify-center gap-6 mb-6">
+      <a href="https://github.com/javimosch/cli-output-spec" target="_blank" class="text-gray-500 hover:text-[#22c55e] transition-colors text-sm">output</a>
+      <a href="https://github.com/javimosch/cli-guide-spec" target="_blank" class="text-gray-500 hover:text-[#22c55e] transition-colors text-sm">guide</a>
+      <a href="https://github.com/javimosch/cli-feedback-spec" target="_blank" class="text-gray-500 hover:text-[#22c55e] transition-colors text-sm">feedback</a>
+      <a href="https://github.com/javimosch/cli-update-spec" target="_blank" class="text-gray-500 hover:text-[#22c55e] transition-colors text-sm">update</a>
+    </div>
+    <p class="text-gray-600 text-sm">
+      <a href="https://intrane.fr" class="hover:text-[#22c55e] transition-colors">intrane.fr</a>
+      &middot;
+      <a href="https://blog.intrane.fr/agent-first-cli-specs" class="hover:text-[#22c55e] transition-colors">Read the blog post</a>
+      &middot; MIT &middot; Made in France
+    </p>
+  </div>
+</footer>
+
+<script>
+  // Reveal on scroll
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
