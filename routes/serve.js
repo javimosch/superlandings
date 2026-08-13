@@ -6,6 +6,7 @@ const { readDB, getEngine } = require('../lib/store');
 const { getVersions, restoreVersionToDisk, getLandingFsDir } = require('../lib/versions');
 const { writeDirectoryFilesSync } = require('../lib/db');
 const { i18nMiddleware, createTranslationHelper } = require('../lib/i18n');
+const { isValidSlug } = require('../lib/utils');
 const mongoose = require('mongoose');
 
 const router = express.Router();
@@ -13,10 +14,6 @@ const router = express.Router();
 
 
 // --- path-traversal guards ------------------------------------------------------
-function isValidSlug(slug) {
-  return typeof slug === 'string' && /^[a-z0-9][a-z0-9\-_]*$/i.test(slug);
-}
-
 // A page segment must be a simple filename (no path traversal, no slashes).
 function isValidPage(page) {
   return typeof page === 'string' && page.length > 0 && /^[a-z0-9][a-z0-9\-_]*$/i.test(page);
@@ -127,6 +124,7 @@ async function serveLandingByDomain(req, res, next) { console.log("[SLBD] path="
     );
 
     if (!landing) return next();
+    if (!isValidSlug(landing.slug)) return res.status(400).send('Invalid slug');
 
     const landingDir = getLandingFsDir(landing);
 
@@ -251,6 +249,7 @@ async function serveLandingByDomain(req, res, next) { console.log("[SLBD] path="
 async function serveLandingBySlug(req, res, next) {
   try {
     const { slug } = req.params;
+    if (!isValidSlug(slug)) return res.status(400).send('Invalid slug');
     const db = req.db || await readDB();
 
     let actualSlug = slug;
@@ -273,6 +272,7 @@ async function serveLandingBySlug(req, res, next) {
 
     const landing = db.landings.find(l => l.slug === actualSlug);
     if (!landing) return res.status(404).send('Landing not found');
+    if (!isValidSlug(landing.slug)) return res.status(400).send('Invalid slug');
 
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
@@ -334,6 +334,7 @@ async function serveLandingBySlug(req, res, next) {
 async function serveEjsSubPage(req, res, next) {
   try {
     const { slug } = req.params;
+    if (!isValidSlug(slug)) return res.status(400).send('Invalid slug');
     const page = (req.params[0] || '').replace(/^\//, '').replace(/\.ejs$/, '');
     if (!page) return next();
 
@@ -369,6 +370,7 @@ async function serveEjsSubPage(req, res, next) {
 
     const landing = db.landings.find(l => l.slug === actualSlug);
     if (!landing || landing.type !== 'ejs') return next();
+    if (!isValidSlug(landing.slug)) return res.status(400).send('Invalid slug');
     const landingDir = getLandingFsDir(landing);
 
     const middleware = i18nMiddleware(landingDir);
