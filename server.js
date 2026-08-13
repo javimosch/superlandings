@@ -1,5 +1,6 @@
 console.log("MODE", process.env.MODE || "development");
-require("dotenv").config({ path: `.env.${process.env.MODE}` || ".env" });
+const envFile = process.env.ENV_FILE || (process.env.MODE ? `.env.${process.env.MODE}` : ".env");
+require("dotenv").config({ path: envFile });
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
@@ -29,10 +30,7 @@ const {
 } = require("./routes/serve");
 
 // SaaSBackend integration
-const saasbackend =
-  process.env.NODE_ENV === "production"
-    ? require("saasbackend")
-    : require("./ref-saasbackend");
+const saasbackend = require("./lib/superbackend");
 
 // Initialize
 const app = express();
