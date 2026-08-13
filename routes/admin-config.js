@@ -3,6 +3,7 @@ const { migrateDomains, getAllDomainStrings } = require('../lib/db');
 const { readDB, writeDB } = require('../lib/store');
 const { deployAdminTraefikConfig, removeAdminTraefikConfig, validateTraefikEnv } = require('../lib/traefik');
 const { getTraefikSetting, getTraefikFallbacks } = require('../lib/traefik-settings');
+const { clearTemplateCache } = require('../lib/templates');
 
 const router = express.Router();
 
@@ -140,6 +141,17 @@ router.post('/unpublish', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error unpublishing admin:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Clear the Express/EJS template cache without restarting the server.
+router.post('/templates/reload', (req, res) => {
+  try {
+    clearTemplateCache(req.app);
+    res.json({ success: true, message: 'Template cache reloaded' });
+  } catch (error) {
+    console.error('❌ Error reloading templates:', error);
     res.status(500).json({ error: error.message });
   }
 });
