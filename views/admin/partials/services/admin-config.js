@@ -32,6 +32,14 @@
           });
           const data = await res.json().catch(() => ({}));
           return { ok: res.ok, data };
+        },
+        async reloadTemplates() {
+          const res = await fetchImpl('/api/admin-config/templates/reload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const data = await res.json().catch(() => ({}));
+          return { ok: res.ok, data };
         }
       };
     }

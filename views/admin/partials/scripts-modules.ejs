@@ -105,6 +105,20 @@
           }
         },
 
+        async reloadTemplates() {
+          if (!services.adminConfig) throw new Error('Admin config service missing');
+          this.loading.templateReload = true;
+          try {
+            const { ok, data } = await services.adminConfig().reloadTemplates();
+            if (!ok) throw new Error(data.error || 'Failed to reload templates');
+            this.showSuccess(data.message || 'Templates reloaded');
+          } catch (err) {
+            this.showError('Error reloading templates: ' + err.message);
+          } finally {
+            this.loading.templateReload = false;
+          }
+        },
+
         // Settings Methods
         loadLocalSettings() {
           const settings = {};
