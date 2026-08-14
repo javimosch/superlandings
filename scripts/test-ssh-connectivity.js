@@ -1,8 +1,6 @@
 const { testSshConnectivity } = require('../lib/traefik');
 require('dotenv').config();
-const saasbackend = process.env.NODE_ENV === 'production'
-  ? require('saasbackend')
-  : require('../ref-saasbackend');
+const saasbackend = require('../lib/superbackend');
 
 async function runSmokeTest() {
   console.log('--- SSH Connectivity Smoke Test (Using DB Key) ---');
