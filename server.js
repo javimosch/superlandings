@@ -30,10 +30,7 @@ const {
 } = require("./routes/serve");
 
 // SaaSBackend integration
-const saasbackend =
-  process.env.NODE_ENV === "production"
-    ? require("saasbackend")
-    : require("./ref-saasbackend");
+const saasbackend = require("./lib/superbackend");
 
 // Initialize
 const app = express();
