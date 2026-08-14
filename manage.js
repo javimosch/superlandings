@@ -41,7 +41,7 @@ async function selectEnvFile() {
 
   rl.close();
 
-  const index = parseInt(choice) - 1;
+  const index = parseInt(choice, 10) - 1;
   if (isNaN(index) || index < 0 || index >= envFiles.length) {
     if (choice !== "") {
       console.log(`Invalid selection, using ${envFiles[0]}`);
@@ -336,7 +336,9 @@ async function main() {
             );
             break;
           }
-        } catch (e2) {}
+        } catch (e2) {
+          console.error(`Health check curl failed: ${e2.message}`);
+        }
       }
 
       await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -476,7 +478,7 @@ async function main() {
       });
 
       const choice = await prompt("Select a compose file (enter number): ");
-      const choiceNum = parseInt(choice);
+      const choiceNum = parseInt(choice, 10);
 
       if (isNaN(choiceNum) || choiceNum < 1 || choiceNum > composeFiles.length) {
         console.error("❌ Invalid selection");
@@ -524,7 +526,7 @@ async function main() {
     const imageChoice = await prompt(
       "Select an image to push (enter number): ",
     );
-    const imageChoiceNum = parseInt(imageChoice);
+    const imageChoiceNum = parseInt(imageChoice, 10);
 
     if (
       isNaN(imageChoiceNum) ||
