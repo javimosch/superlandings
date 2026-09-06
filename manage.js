@@ -4,6 +4,7 @@ const { execSync, spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const readline = require("readline");
+const { refreshLandingCache } = require("./lib/landing-cache");
 
 async function selectEnvFile() {
   if (process.env.ENV_FILE) {
@@ -40,7 +41,7 @@ async function selectEnvFile() {
 
   rl.close();
 
-  const index = parseInt(choice) - 1;
+  const index = parseInt(choice, 10) - 1;
   if (isNaN(index) || index < 0 || index >= envFiles.length) {
     if (choice !== "") {
       console.log(`Invalid selection, using ${envFiles[0]}`);
@@ -335,7 +336,9 @@ async function main() {
             );
             break;
           }
-        } catch (e2) {}
+        } catch (e2) {
+          console.error(`Health check curl failed: ${e2.message}`);
+        }
       }
 
       await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -475,7 +478,7 @@ async function main() {
       });
 
       const choice = await prompt("Select a compose file (enter number): ");
-      const choiceNum = parseInt(choice);
+      const choiceNum = parseInt(choice, 10);
 
       if (isNaN(choiceNum) || choiceNum < 1 || choiceNum > composeFiles.length) {
         console.error("❌ Invalid selection");
@@ -523,7 +526,7 @@ async function main() {
     const imageChoice = await prompt(
       "Select an image to push (enter number): ",
     );
-    const imageChoiceNum = parseInt(imageChoice);
+    const imageChoiceNum = parseInt(imageChoice, 10);
 
     if (
       isNaN(imageChoiceNum) ||
@@ -557,6 +560,28 @@ async function main() {
     }
   }
 
+  async function refreshLanding() {
+    const slug = args[1];
+    if (!slug) {
+      console.error("❌ Error: A landing slug is required");
+      console.log("Usage: node manage.js refresh <slug>");
+      return;
+    }
+
+    console.log(`🔄 Refreshing landing cache for "${slug}"...`);
+
+    try {
+      const targetDirs = refreshLandingCache(slug);
+      console.log(`✅ Landing cache refreshed for "${slug}":`);
+      for (const dir of targetDirs) {
+        console.log(`   ${dir}`);
+      }
+    } catch (error) {
+      console.error(`❌ Error refreshing landing cache: ${error.message}`);
+      process.exit(1);
+    }
+  }
+
   function showEnvVars() {
     console.log("===== Current Environment Variables =====");
     console.log(`REMOTE_HOST: ${config.REMOTE_HOST}`);
@@ -584,6 +609,7 @@ async function main() {
     console.log("  proxy   - Create proxy configuration file");
     console.log("  domain  - Deploy domain to remote (Traefik gateway)");
     console.log("  build   - Build and optionally push Docker images");
+    console.log("  refresh - Refresh on-disk cache for a landing slug");
     console.log("  env     - Show environment variables");
     console.log("  help    - Show this help message");
     console.log("");
@@ -599,10 +625,11 @@ async function main() {
     console.log("3. Create proxy configuration file");
     console.log("4. Deploy domain to remote (Traefik gateway)");
     console.log("5. Build and push Docker images");
-    console.log("6. Show environment variables");
-    console.log("7. Exit");
+    console.log("6. Refresh landing cache");
+    console.log("7. Show environment variables");
+    console.log("8. Exit");
 
-    const choice = await prompt("\nPlease select an option (1-7): ");
+    const choice = await prompt("\nPlease select an option (1-8): ");
 
     switch (choice.trim()) {
       case "1":
@@ -621,9 +648,18 @@ async function main() {
         await buildImage();
         break;
       case "6":
-        showEnvVars();
+        {
+          const refreshSlug = await prompt("Enter the landing slug to refresh: ");
+          if (refreshSlug) {
+            args[1] = refreshSlug;
+            await refreshLanding();
+          }
+        }
         break;
       case "7":
+        showEnvVars();
+        break;
+      case "8":
         console.log("Exiting...");
         rl.close();
         process.exit(0);
@@ -661,6 +697,10 @@ async function main() {
         break;
       case "build":
         await buildImage();
+        rl.close();
+        break;
+      case "refresh":
+        await refreshLanding();
         rl.close();
         break;
       case "env":
