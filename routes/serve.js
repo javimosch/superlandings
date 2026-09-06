@@ -88,6 +88,8 @@ async function domainStaticMiddleware(req, res, next) {
     const landingDir = getLandingFsDir(landing);
     let filePath = req.url.split('?')[0];
     if (filePath.startsWith(`/${landing.slug}/`)) filePath = filePath.slice(`/${landing.slug}`.length);
+    // Strip leading slash so path.resolve treats filePath as relative to landingDir.
+    filePath = filePath.replace(/^\//, '');
 
     const fullPath = safeResolvePath(landingDir, filePath);
     if (fullPath && fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) return res.sendFile(fullPath);
