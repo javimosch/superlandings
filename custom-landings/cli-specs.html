@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Agent-First CLI Specs — Five conventions for agent-driven CLIs</title>
-<meta name="description" content="Five open conventions that make any CLI fully agent-first: output contract, embedded guide, dual-write feedback, content-hash self-update, honest usage telemetry. Adopt any subset in 30 minutes.">
+<title>Agent-First CLI Specs — Six conventions for agent-driven CLIs</title>
+<meta name="description" content="Six open conventions that make any CLI fully agent-first: output contract, embedded guide, dual-write feedback, content-hash self-update, honest usage telemetry, daemon lifecycle. Adopt any subset in 30 minutes, then verify with cli-spec-conformance.">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -30,13 +30,13 @@
   <div class="container mx-auto px-4 relative z-10 text-center">
     <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#22c55e]/10 border border-[#22c55e]/20 mb-6">
       <span class="w-2 h-2 rounded-full bg-[#22c55e] animate-pulse"></span>
-      <span class="text-sm font-medium text-[#86efac]">5 specs &middot; MIT &middot; language-neutral</span>
+      <span class="text-sm font-medium text-[#86efac]">6 specs &middot; MIT &middot; language-neutral</span>
     </div>
     <h1 class="text-5xl md:text-6xl font-black tracking-tight mb-6">
       <span class="gradient-text">Agent-First CLI Specs</span>
     </h1>
     <p class="text-xl text-gray-400 max-w-2xl mx-auto mb-8 leading-relaxed">
-      Five open conventions that make any CLI fully agent-first: learnable, drivable, reportable, and self-updating — and finally, measurable. Adopt any subset in 30 minutes per spec.
+      Six open conventions that make any CLI fully agent-first: learnable, drivable, reportable, self-updating, honest about usage, and manageable as a daemon. Adopt any subset in 30 minutes per spec &mdash; then check your work with a validator that runs your binary.
     </p>
     <div class="flex flex-wrap justify-center gap-3">
       <a href="#specs" class="px-6 py-3 rounded-lg bg-[#22c55e] hover:bg-[#16a34a] text-black font-bold transition-all">
@@ -54,7 +54,7 @@
   <div class="container mx-auto px-4">
     <div class="text-center mb-12">
       <h2 class="text-3xl font-bold mb-3">The agent lifecycle</h2>
-      <p class="text-gray-500 max-w-xl mx-auto">An agent lands on a fresh machine with only the binary. Five commands, five specs.</p>
+      <p class="text-gray-500 max-w-xl mx-auto">An agent lands on a fresh machine with only the binary. Five commands, five specs &mdash; the sixth, cli-daemon-spec, takes over once the tool runs a server.</p>
     </div>
     <div class="max-w-3xl mx-auto">
       <div class="font-mono text-sm bg-[#0a0a0a] border border-gray-800 rounded-xl p-6 leading-relaxed">
@@ -91,7 +91,7 @@
 <section id="specs" class="py-20 border-t border-gray-900 scroll-mt-20">
   <div class="container mx-auto px-4">
     <div class="text-center mb-16">
-      <h2 class="text-4xl font-bold mb-4">The five specs</h2>
+      <h2 class="text-4xl font-bold mb-4">The six specs</h2>
       <p class="text-gray-500 max-w-xl mx-auto">Each is independently adoptable. Together they make a CLI fully agent-first.</p>
     </div>
 
@@ -209,6 +209,74 @@
         </a>
       </div>
 
+
+      <!-- cli-daemon-spec -->
+      <div class="card-glow bg-[#0a0a0a] border border-gray-800 rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-xs font-mono text-[#22c55e] border border-[#22c55e]/20">capability</span>
+          <span class="px-2.5 py-1 rounded-md bg-gray-800 text-xs font-mono text-gray-400 border border-gray-700">daemon</span>
+        </div>
+        <h3 class="text-2xl font-bold text-white mb-3">cli-daemon-spec</h3>
+        <p class="text-gray-400 mb-6 leading-relaxed">
+          The background lifecycle. <code class="text-[#86efac]">&lt;tool&gt; serve --host --port</code> binds <strong class="text-gray-300">127.0.0.1 by default</strong> &mdash; serving the whole network has to be asked for. <code class="text-[#86efac]">GET /_health</code> is open and cheap; <code class="text-[#86efac]">POST /_shutdown</code> is token-gated off-loopback. <code class="text-[#86efac]">daemon start|stop|status</code> is idempotent and polls health instead of sleeping.
+        </p>
+        <div class="flex flex-wrap gap-2 mb-6">
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">loopback default</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">/_health</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">/_shutdown</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">idempotent</span>
+        </div>
+        <a href="https://github.com/javimosch/cli-daemon-spec" target="_blank" class="inline-flex items-center gap-2 text-[#22c55e] hover:text-[#86efac] font-medium text-sm">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          github.com/javimosch/cli-daemon-spec
+        </a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- Conformance -->
+<section class="py-20 border-t border-gray-900">
+  <div class="container mx-auto px-4">
+    <div class="text-center mb-12">
+      <h2 class="text-3xl font-bold mb-3">Check it, don&rsquo;t claim it</h2>
+      <p class="text-gray-500 max-w-2xl mx-auto">Every spec ends with &ldquo;a tool conforms if it&hellip;&rdquo;. <span class="text-gray-400">cli-spec-conformance</span> turns that summary into assertions it runs against your binary.</p>
+    </div>
+
+    <div class="max-w-3xl mx-auto">
+      <div class="bg-[#0a0a0a] border border-gray-800 rounded-2xl p-8">
+        <pre class="text-sm font-mono overflow-x-auto mb-6"><code><span class="text-gray-500">$</span> <span class="text-[#86efac]">cli-spec-conformance check ./mytool</span>
+<span class="text-[#22c55e]">  [pass]</span> <span class="text-gray-400">cli-output-spec/help-json-exit (MUST)</span>
+<span class="text-red-400">  [FAIL]</span> <span class="text-gray-400">cli-output-spec/unknown-command-exit (MUST) &mdash; exit 1 &mdash; expected 80-89</span>
+<span class="text-red-400">  [FAIL]</span> <span class="text-gray-400">cli-guide-spec/guide-json (MUST) &mdash; `guide` stdout is not JSON</span>
+<span class="text-gray-600">  &hellip;</span>
+<span class="text-gray-500">$</span> <span class="text-[#86efac]">echo $?</span>
+<span class="text-gray-400">90</span></code></pre>
+
+        <p class="text-gray-400 mb-6 leading-relaxed">
+          Black-box, so it is language-neutral by construction: it reads stdout, stderr and exit codes, and for the daemon spec it starts a real server on a free loopback port and talks to it. The loopback-default rule is checked against <strong class="text-gray-300">the kernel&rsquo;s listen table</strong>, not the tool&rsquo;s own claim. The embedded-guide rule is checked by re-running <code class="text-[#86efac]">guide</code> behind a dead proxy &mdash; a guide that fetches at runtime fails the rule that says it must not.
+        </p>
+
+        <div class="flex flex-wrap gap-2 mb-6">
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">28 checks</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">~80 kB static binary</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">exit 0 or 90</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">MUST vs SHOULD</span>
+        </div>
+
+        <div class="bg-[#111] border border-gray-800 rounded-lg p-4 mb-6">
+          <p class="text-sm text-gray-500 leading-relaxed">
+            <strong class="text-gray-400">Covers three of the six:</strong> output, guide and daemon &mdash; the three that need nothing but your binary. feedback, update and telemetry each depend on an external service (a relay, a release host, a collector), so conformance there is still checked by hand.
+          </p>
+        </div>
+
+        <a href="https://github.com/javimosch/cli-spec-conformance" target="_blank" class="inline-flex items-center gap-2 text-[#22c55e] hover:text-[#86efac] font-medium text-sm">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          github.com/javimosch/cli-spec-conformance
+        </a>
+      </div>
     </div>
   </div>
 </section>
@@ -218,7 +286,7 @@
   <div class="container mx-auto px-4">
     <div class="text-center mb-12">
       <h2 class="text-3xl font-bold mb-3">Reference implementations</h2>
-      <p class="text-gray-500 max-w-xl mx-auto">Same contract, two languages, five tools. Each is a worked example.</p>
+      <p class="text-gray-500 max-w-xl mx-auto">Same contract, six tools, each a worked example &mdash; and, below, the same contract implemented fifteen times over in fifteen languages.</p>
     </div>
     <div class="max-w-3xl mx-auto overflow-x-auto">
       <table class="w-full text-sm">
@@ -230,6 +298,7 @@
             <th class="text-center py-3 px-4 text-[#22c55e]">guide</th>
             <th class="text-center py-3 px-4 text-[#22c55e]">feedback</th>
             <th class="text-center py-3 px-4 text-[#22c55e]">update</th>
+            <th class="text-center py-3 px-4 text-[#22c55e]">telemetry</th>
           </tr>
         </thead>
         <tbody class="font-mono">
@@ -240,23 +309,23 @@
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
-          </tr>
+          <td class="py-3 px-4 text-center text-gray-700">&mdash;</td></tr>
           <tr class="border-b border-gray-900 hover:bg-[#0a0a0a]">
             <td class="py-3 px-4"><a href="https://github.com/javimosch/mago" target="_blank" class="text-[#86efac] hover:underline">mago</a></td>
             <td class="py-3 px-4 text-gray-500">Go</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
-            <td class="py-3 px-4 text-center text-[#22c55e]"><td class="py-3 px-4 text-center text-gray-700">&mdash;</td>#10003;</td>
+            <td class="py-3 px-4 text-center text-gray-700">&mdash;</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
-          </tr>
+          <td class="py-3 px-4 text-center text-gray-700">&mdash;</td></tr>
           <tr class="border-b border-gray-900 hover:bg-[#0a0a0a]">
             <td class="py-3 px-4"><a href="https://github.com/javimosch/automaintainer" target="_blank" class="text-[#86efac] hover:underline">automaintainer</a></td>
             <td class="py-3 px-4 text-gray-500">Go</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
-            <td class="py-3 px-4 text-center text-[#22c55e]"><td class="py-3 px-4 text-center text-gray-700">&mdash;</td>#10003;</td>
+            <td class="py-3 px-4 text-center text-gray-700">&mdash;</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
-          </tr>
+          <td class="py-3 px-4 text-center text-gray-700">&mdash;</td></tr>
           <tr class="border-b border-gray-900 hover:bg-[#0a0a0a]">
             <td class="py-3 px-4"><a href="https://github.com/javimosch/remotecmd" target="_blank" class="text-[#86efac] hover:underline">remotecmd</a></td>
             <td class="py-3 px-4 text-gray-500">Go</td>
@@ -264,17 +333,49 @@
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
-          </tr>
+          <td class="py-3 px-4 text-center text-gray-700">&mdash;</td></tr>
+          <tr class="border-b border-gray-900 hover:bg-[#0a0a0a]"><td class="py-3 px-4"><a href="https://github.com/javimosch/machin-secure" target="_blank" class="text-[#86efac] hover:underline">machin-secure</a></td><td class="py-3 px-4 text-gray-500">machin</td><td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td><td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td><td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td><td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td><td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td></tr>
           <tr class="hover:bg-[#0a0a0a]">
             <td class="py-3 px-4"><a href="https://github.com/javimosch/chatsnip" target="_blank" class="text-[#86efac] hover:underline">chatsnip</a></td>
             <td class="py-3 px-4 text-gray-500">machin</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
             <td class="py-3 px-4 text-center text-[#22c55e]">&#10003;</td>
-            <td class="py-3 px-4 text-center text-[#22c55e]"><td class="py-3 px-4 text-center text-gray-700">&mdash;</td>#10003;</td>
-          </tr>
+            <td class="py-3 px-4 text-center text-gray-700">&mdash;</td>
+          <td class="py-3 px-4 text-center text-gray-700">&mdash;</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="max-w-3xl mx-auto mt-16">
+      <div class="bg-[#0a0a0a] border border-gray-800 rounded-2xl p-8">
+        <h3 class="text-xl font-bold text-white mb-3">The same contract, fifteen times over</h3>
+        <p class="text-gray-400 mb-6 leading-relaxed">
+          &ldquo;Language-neutral&rdquo; is easy to claim and hard to show. The
+          <a href="https://github.com/javimosch/boilerplate-cli-ui-machin" target="_blank" class="text-[#86efac] hover:underline">CLI+UI boilerplate family</a>
+          builds one reference app &mdash; a CLI with an embedded web UI &mdash; in fifteen languages, and every one of them scores
+          <strong class="text-gray-300">28/28</strong> on cli-spec-conformance in its own CI.
+        </p>
+        <div class="flex flex-wrap gap-2 mb-6">
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">machin</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">Go</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">Rust</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">Zig</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">C++</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">Nim</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">V</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">Crystal</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">Dart</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">.NET</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">Python</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">Node</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">Deno</span>
+        </div>
+        <p class="text-sm text-gray-500 leading-relaxed">
+          Five of those &mdash; Nim, V, Crystal, Dart and .NET &mdash; were written straight from the protocol text with no compiler on hand, and passed on the first CI run. That is the strongest evidence available that the contract is behavioural rather than shaped around one runtime. Conformance scores and binary measurements are produced by
+          <a href="https://github.com/javimosch/boilerplate-cli-ui-fleet" target="_blank" class="text-gray-400 hover:text-[#86efac] hover:underline">boilerplate-cli-ui-fleet</a>.
+        </p>
+      </div>
     </div>
   </div>
 </section>
