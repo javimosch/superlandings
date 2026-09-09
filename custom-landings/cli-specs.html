@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agent-First CLI Specs — Six conventions for agent-driven CLIs</title>
-<meta name="description" content="Six open conventions that make any CLI fully agent-first: output contract, embedded guide, dual-write feedback, content-hash self-update, honest usage telemetry, daemon lifecycle. Adopt any subset in 30 minutes, then verify with cli-spec-conformance.">
+<meta name="description" content="Six open conventions that make any CLI fully agent-first: output contract, embedded guide, dual-write feedback, content-hash self-update with self-install, honest usage telemetry, and daemon lifecycle management. Adopt any subset in 30 minutes.">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -36,7 +36,7 @@
       <span class="gradient-text">Agent-First CLI Specs</span>
     </h1>
     <p class="text-xl text-gray-400 max-w-2xl mx-auto mb-8 leading-relaxed">
-      Six open conventions that make any CLI fully agent-first: learnable, drivable, reportable, self-updating, honest about usage, and manageable as a daemon. Adopt any subset in 30 minutes per spec &mdash; then check your work with a validator that runs your binary.
+      Five open conventions that make any CLI fully agent-first: learnable, drivable, reportable, and self-updating — and finally, measurable. Adopt any subset in 30 minutes per spec.
     </p>
     <div class="flex flex-wrap justify-center gap-3">
       <a href="#specs" class="px-6 py-3 rounded-lg bg-[#22c55e] hover:bg-[#16a34a] text-black font-bold transition-all">
@@ -54,7 +54,7 @@
   <div class="container mx-auto px-4">
     <div class="text-center mb-12">
       <h2 class="text-3xl font-bold mb-3">The agent lifecycle</h2>
-      <p class="text-gray-500 max-w-xl mx-auto">An agent lands on a fresh machine with only the binary. Five commands, five specs &mdash; the sixth, cli-daemon-spec, takes over once the tool runs a server.</p>
+      <p class="text-gray-500 max-w-xl mx-auto">An agent lands on a fresh machine with only the binary. Six commands, six specs.</p>
     </div>
     <div class="max-w-3xl mx-auto">
       <div class="font-mono text-sm bg-[#0a0a0a] border border-gray-800 rounded-xl p-6 leading-relaxed">
@@ -78,16 +78,20 @@
           <span class="text-[#22c55e] font-bold">myapp update</span>
           <span class="text-gray-600"># stay current &mdash; content-hash, atomic swap</span>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-3 mb-2">
           <span class="text-[#22c55e] font-bold">myapp telemetry</span>
           <span class="text-gray-600"># and the author finally knows it ran &mdash; disclosed, opt-out</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-[#22c55e] font-bold">myapp daemon start</span>
+          <span class="text-gray-600"># background it &mdash; poll /_health, never a fixed sleep</span>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- The four specs -->
+<!-- The six specs -->
 <section id="specs" class="py-20 border-t border-gray-900 scroll-mt-20">
   <div class="container mx-auto px-4">
     <div class="text-center mb-16">
@@ -171,13 +175,14 @@
         </div>
         <h3 class="text-2xl font-bold text-white mb-3">cli-update-spec</h3>
         <p class="text-gray-400 mb-6 leading-relaxed">
-          Content-hash self-update. <code class="text-[#86efac]">&lt;tool&gt; update</code> downloads, verifies <code class="text-[#86efac]">sha256[:12]</code>, smoke-tests, atomically swaps (current &rarr; <code class="text-[#86efac]">.bak</code>, new &rarr; in place). Passive stderr nudge when stale. No silent auto-update &mdash; manual by default.
+          Content-hash self-update. <code class="text-[#86efac]">&lt;tool&gt; update</code> downloads, verifies <code class="text-[#86efac]">sha256[:12]</code>, smoke-tests, atomically swaps (current &rarr; <code class="text-[#86efac]">.bak</code>, new &rarr; in place). Passive stderr nudge when stale. No silent auto-update &mdash; manual by default. v1.1 adds <code class="text-[#86efac]">&lt;tool&gt; install</code>/<code class="text-[#86efac]">uninstall</code> &mdash; relocate or remove a binary already in hand (default <code class="text-[#86efac]">~/.local/bin</code>, idempotent, never sudo).
         </p>
         <div class="flex flex-wrap gap-2 mb-6">
           <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">content-hash</span>
           <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">verify-then-swap</span>
           <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">smoke test</span>
           <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">.bak rollback</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">self-install</span>
         </div>
         <a href="https://github.com/javimosch/cli-update-spec" target="_blank" class="inline-flex items-center gap-2 text-[#22c55e] hover:text-[#86efac] font-medium text-sm">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
@@ -190,7 +195,6 @@
         <div class="flex items-center gap-2 mb-4">
           <span class="px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-xs font-mono text-[#22c55e] border border-[#22c55e]/20">capability</span>
           <span class="px-2.5 py-1 rounded-md bg-gray-800 text-xs font-mono text-gray-400 border border-gray-700">telemetry</span>
-          <span class="px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-xs font-mono text-[#22c55e] border border-[#22c55e]/20">new</span>
         </div>
         <h3 class="text-2xl font-bold text-white mb-3">cli-telemetry-spec</h3>
         <p class="text-gray-400 mb-6 leading-relaxed">
@@ -209,21 +213,21 @@
         </a>
       </div>
 
-
       <!-- cli-daemon-spec -->
       <div class="card-glow bg-[#0a0a0a] border border-gray-800 rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1">
         <div class="flex items-center gap-2 mb-4">
           <span class="px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-xs font-mono text-[#22c55e] border border-[#22c55e]/20">capability</span>
           <span class="px-2.5 py-1 rounded-md bg-gray-800 text-xs font-mono text-gray-400 border border-gray-700">daemon</span>
+          <span class="px-2.5 py-1 rounded-md bg-[#22c55e]/10 text-xs font-mono text-[#22c55e] border border-[#22c55e]/20">new</span>
         </div>
         <h3 class="text-2xl font-bold text-white mb-3">cli-daemon-spec</h3>
         <p class="text-gray-400 mb-6 leading-relaxed">
-          The background lifecycle. <code class="text-[#86efac]">&lt;tool&gt; serve --host --port</code> binds <strong class="text-gray-300">127.0.0.1 by default</strong> &mdash; serving the whole network has to be asked for. <code class="text-[#86efac]">GET /_health</code> is open and cheap; <code class="text-[#86efac]">POST /_shutdown</code> is token-gated off-loopback. <code class="text-[#86efac]">daemon start|stop|status</code> is idempotent and polls health instead of sleeping.
+          Daemon lifecycle. <code class="text-[#86efac]">&lt;tool&gt; serve --host --port</code> binds loopback by default &mdash; never <code class="text-[#86efac]">0.0.0.0</code>. <code class="text-[#86efac]">GET /_health</code> + <code class="text-[#86efac]">POST /_shutdown</code>, token-gated the instant the bind isn't loopback. <code class="text-[#86efac]">&lt;tool&gt; daemon start|stop|status</code> polls health instead of a fixed sleep, fully idempotent. Formalizes what chatsnip and machin-cms had already reinvented independently.
         </p>
         <div class="flex flex-wrap gap-2 mb-6">
-          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">loopback default</span>
-          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">/_health</span>
-          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">/_shutdown</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">loopback by default</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">health-probe</span>
+          <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">shutdown token</span>
           <span class="px-2 py-0.5 rounded bg-gray-800 text-xs font-mono text-gray-400">idempotent</span>
         </div>
         <a href="https://github.com/javimosch/cli-daemon-spec" target="_blank" class="inline-flex items-center gap-2 text-[#22c55e] hover:text-[#86efac] font-medium text-sm">
@@ -235,7 +239,6 @@
     </div>
   </div>
 </section>
-
 
 <!-- Conformance -->
 <section class="py-20 border-t border-gray-900">
@@ -346,7 +349,6 @@
         </tbody>
       </table>
     </div>
-
     <div class="max-w-3xl mx-auto mt-16">
       <div class="bg-[#0a0a0a] border border-gray-800 rounded-2xl p-8">
         <h3 class="text-xl font-bold text-white mb-3">The same contract, fifteen times over</h3>
@@ -430,6 +432,8 @@
       <a href="https://github.com/javimosch/cli-guide-spec" target="_blank" class="text-gray-500 hover:text-[#22c55e] transition-colors text-sm">guide</a>
       <a href="https://github.com/javimosch/cli-feedback-spec" target="_blank" class="text-gray-500 hover:text-[#22c55e] transition-colors text-sm">feedback</a>
       <a href="https://github.com/javimosch/cli-update-spec" target="_blank" class="text-gray-500 hover:text-[#22c55e] transition-colors text-sm">update</a>
+      <a href="https://github.com/javimosch/cli-telemetry-spec" target="_blank" class="text-gray-500 hover:text-[#22c55e] transition-colors text-sm">telemetry</a>
+      <a href="https://github.com/javimosch/cli-daemon-spec" target="_blank" class="text-gray-500 hover:text-[#22c55e] transition-colors text-sm">daemon</a>
     </div>
     <p class="text-gray-600 text-sm">
       <a href="https://intrane.fr" class="hover:text-[#22c55e] transition-colors">intrane.fr</a>
