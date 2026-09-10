@@ -51,7 +51,7 @@ function createApp() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Mount superbackend at both paths (direct + Traefik-prefixed)
+  // Mount superbackend at /saas (direct) and /:slug/saas (Traefik addPrefix)
   const sbMiddleware = superbackend.middleware({
     mongodbUri: process.env.MONGO_URI,
     skipBodyParser: true,
@@ -59,7 +59,7 @@ function createApp() {
     adminPassword: process.env.ADMIN_PASSWORD,
   });
   app.use('/saas', sbMiddleware);
-  app.use('/blog-intrane-fr/saas', (req, res, next) => {
+  app.use('/:slug/saas', (req, res, next) => {
     sbMiddleware(req, res, next);
   });
 
