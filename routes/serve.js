@@ -240,6 +240,15 @@ async function serveLandingByDomain(req, res, next) { console.log("[SLBD] path="
     }
 
     if (landing.type === 'html' || landing.type === 'static' || landing.type === 'virtual') {
+      // Sub-page routing via X-Sub-Page header (set by Traefik PathPrefix router).
+      // Works around proxies that strip the path to / before forwarding.
+      const subPage = req.headers['x-sub-page'];
+      if (subPage && isValidPage(subPage)) {
+        const subPagePath = safeResolvePath(landingDir, subPage + '.html');
+        if (subPagePath && fs.existsSync(subPagePath) && fs.statSync(subPagePath).isFile()) {
+          return sendHtmlInjected(res, subPagePath);
+        }
+      }
       const indexPath = await ensureLandingContent(landing);
       return sendHtmlInjected(res, indexPath);
     }
