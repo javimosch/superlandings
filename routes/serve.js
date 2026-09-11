@@ -84,13 +84,19 @@ async function domainStaticMiddleware(req, res, next) {
 
   if (landing) {
     const landingDir = getLandingFsDir(landing);
-    let filePath = req.url.split('?')[0];
+    // Use originalUrl, not url — Express app.use('/*') strips the path from req.url
+    let filePath = (req.originalUrl || req.url).split('?')[0];
     if (filePath.startsWith(`/${landing.slug}/`)) filePath = filePath.slice(`/${landing.slug}`.length);
     // Strip leading slash so path.resolve treats filePath as relative to landingDir.
     filePath = filePath.replace(/^\//, '');
 
     const fullPath = safeResolvePath(landingDir, filePath);
     if (fullPath && fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) return res.sendFile(fullPath);
+    // Try .html extension if the file doesn't exist (e.g. /docs → docs.html)
+    if (fullPath && !fs.existsSync(fullPath) && !filePath.endsWith('.html')) {
+      const htmlPath = fullPath + '.html';
+      if (fs.existsSync(htmlPath) && fs.statSync(htmlPath).isFile()) return res.sendFile(htmlPath);
+    }
   }
 
   next();
@@ -114,9 +120,8 @@ async function slugStaticMiddleware(req, res, next) {
   next();
 }
 
-async function serveLandingByDomain(req, res, next) { console.log("[SLBD] path=" + req.path + " host=" + req.get("host"));
+async function serveLandingByDomain(req, res, next) {
   try {
-    console.log('[SLBD] path=' + req.path + ' host=' + req.get('host') + ' url=' + req.url);
     const host = req.get('host');
     if (!host) return next();
 
@@ -240,15 +245,6 @@ async function serveLandingByDomain(req, res, next) { console.log("[SLBD] path="
     }
 
     if (landing.type === 'html' || landing.type === 'static' || landing.type === 'virtual') {
-      // Sub-page routing via X-Sub-Page header (set by Traefik PathPrefix router).
-      // Works around proxies that strip the path to / before forwarding.
-      const subPage = req.headers['x-sub-page'];
-      if (subPage && isValidPage(subPage)) {
-        const subPagePath = safeResolvePath(landingDir, subPage + '.html');
-        if (subPagePath && fs.existsSync(subPagePath) && fs.statSync(subPagePath).isFile()) {
-          return sendHtmlInjected(res, subPagePath);
-        }
-      }
       const indexPath = await ensureLandingContent(landing);
       return sendHtmlInjected(res, indexPath);
     }
