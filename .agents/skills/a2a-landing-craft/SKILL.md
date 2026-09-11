@@ -9,10 +9,20 @@ tags: superlandings,landing,sl-cli,a2a
 
 > **Read-only skill.** Use as reference. Do NOT modify existing landings (especially jar-intrane).
 
+> **Caveat (verified 2026-08-04): `cli/index.js` does not exist in the current checkout.**
+> The only CLI present is root-level `cli.js` (`node cli.js <slug> <html-file> [name]`), a
+> different, **local-only** tool — it writes to local `data/db.json` / `data/landings/<slug>/`
+> and never touches MongoDB or the deployed site. Verify `cli/index.js` exists before trusting
+> any `MODE=staging node cli/index.js landing ...` command below; if it's missing, this skill
+> is stale for that step. To update an **existing production** landing (e.g. `intrane-fr`), use
+> the direct-deploy path documented in `jar-intrane-fr-blog-manage` instead: scp the HTML, then
+> `docker cp` it into `superlandings:/app/data/landings/<slug>/index.html`, sync both
+> `landing-cache` copies, and `docker restart superlandings`.
+
 ## Project
 
 - **Location**: `~/ai/superlandings`
-- **CLI**: `node cli/index.js` (or `npm run sl-cli`)
+- **CLI**: `node cli/index.js` (or `npm run sl-cli`) — **unverified, see caveat above**
 - **Domain**: `https://superlandings.intrane.fr`
 
 ## Prerequisites

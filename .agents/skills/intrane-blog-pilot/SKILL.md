@@ -47,13 +47,41 @@ Slug convention: kebab-case, descriptive, SEO-friendly, max ~80 chars.
 
 ### 2. Create draft in MongoDB
 
+The inline `docker exec -e MONGO_URI='...'` pattern in older versions of this
+skill fails with `AuthenticationFailed` because the hardcoded URI drifts. Use
+the dotenv-based temp-file workflow instead — it reads `/app/.env` inside the
+container, which always has the correct credentials:
+
 ```bash
-docker exec -e MONGO_URI='<uri>' -i superlandings node << 'SCRIPT'
-const mongoose = require('/app/node_modules/mongoose');
+# 1. Write a temp JS upsert script locally
+cat > /tmp/mkpost.js << 'EOF'
+require('dotenv').config({ path: '/app/.env' });
+const fs = require('fs'), mongoose = require('mongoose');
 const BlogPost = require('/app/node_modules/@intranefr/superbackend/src/models/BlogPost');
-// create with status: 'draft'
-SCRIPT
+const data = JSON.parse(fs.readFileSync('/tmp/post.json', 'utf8'));
+(async () => {
+  await mongoose.connect(process.env.MONGO_URI);
+  const ex = await BlogPost.findOne({ slug: data.slug, client: data.client });
+  if (ex) { Object.assign(ex, data, { publishedAt: ex.publishedAt || new Date() }); await ex.save(); }
+  else await BlogPost.create(Object.assign({}, data, { publishedAt: new Date() }));
+  console.log('ok:', data.slug); await mongoose.disconnect();
+})().catch(e => { console.error(e.message); process.exit(1); });
+EOF
+
+# 2. Write the post JSON locally (use python3 json.dump for HTML safety)
+python3 -c "import json; json.dump(post, open('/tmp/post.json','w'), indent=2)"
+
+# 3. Copy both to the container and run
+scp /tmp/mkpost.js /tmp/post.json root@188.245.71.48:/tmp/
+ssh root@188.245.71.48 "docker cp /tmp/mkpost.js superlandings:/app/mkpost.js && \
+  docker cp /tmp/post.json superlandings:/tmp/post.json && \
+  docker exec -w /app superlandings node mkpost.js && \
+  docker exec superlandings rm /app/mkpost.js /tmp/post.json && \
+  rm /tmp/mkpost.js /tmp/post.json"
 ```
+
+Set `status: "published"` and `publishedAt` in the JSON to publish directly,
+or `status: "draft"` to preview first.
 
 ### 3. Preview
 
@@ -65,21 +93,49 @@ Draft-only content returns 404 without `?preview=true`. A yellow banner marks dr
 
 ### 4. Publish
 
-```bash
-# Direct via mongoose:
-docker exec -e MONGO_URI='<uri>' -i superlandings node -e '
-const m=require("/app/node_modules/mongoose");
-const BP=require("/app/node_modules/@intranefr/superbackend/src/models/BlogPost");
-(async()=>{await m.connect("...");await BP.updateOne({slug:"...",client:"intrane"},{$set:{status:"published",publishedAt:new Date()}});console.log("Published");await m.disconnect();})();
-'
-
-# Or via CLI (if escaping works):
-cd /app && node cli.js blog:publish <slug>
-```
+If you created a draft in step 2, update it to published by re-running the
+upsert script with `status: "published"` and `publishedAt` set in the JSON.
+The script is idempotent — it upserts by `(slug, client)`.
 
 ### 5. Index cache
 
 Published articles appear on the index after cache expires (~5min) or container restart.
+
+### 6. Cross-post to dev.to
+
+dev.to takes markdown (first line = title, rest = body). The blog uses HTML.
+Author the markdown version separately — do not convert the HTML.
+
+```bash
+# API key stored in minipostiz SQLite
+K=$(sqlite3 ~/.minipostiz/minipostiz.db \
+  "select credentials from auth where platform='devto';" \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['apiKey'])")
+
+# Create article (published=true)
+python3 -c "
+import json
+md = open('/tmp/article.md').read()
+title = md.split(chr(10))[0]
+body = chr(10).join(md.split(chr(10))[1:]).strip()
+json.dump({'article': {'title': title, 'body_markdown': body, 'published': True, 'tags': ['tag1','tag2']}}, open('/tmp/devto-body.json','w'))
+"
+curl -s -X POST "https://dev.to/api/articles" \
+  -H "api-key: $K" -H "Content-Type: application/json" \
+  -d @/tmp/devto-body.json | python3 -c "import sys,json; d=json.load(sys.stdin); print('url:', d.get('url'))"
+
+# Update existing article (PUT)
+curl -s -X PUT "https://dev.to/api/articles/<id>" \
+  -H "api-key: $K" -H "Content-Type: application/json" \
+  -d @/tmp/devto-body.json
+
+# Check metrics (views, reactions, comments)
+curl -s "https://dev.to/api/articles/<id>" -H "api-key: $K" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'views={d[\"page_views_count\"]} reactions={d[\"positive_reactions_count\"]} comments={d[\"comments_count\"]}')"
+```
+
+Tag links to `rcmd.intrane.fr` (or other Intrane products) with UTM params so
+traffic sources are distinguishable: `?utm_source=devto&utm_medium=article&utm_campaign=<slug>`.
 
 ## Article Template
 
@@ -106,6 +162,9 @@ Tone: direct, opinionated, technical but approachable. Short paragraphs. Strong 
 | 6 | a2a — When AI Agents Talk to Each Other | `a2a-when-ai-agents-talk-to-each-other` | a2a-skill (framework) | published |
 | 7 | The Self-Hosted Stack That Runs My Infrastructure | `the-self-hosted-stack-that-runs-my-infrastructure` | All (capstone) | published |
 | 8 | AI Only Executes What We Imagine — Why Deep Thinking Beats Execution Now | `ai-execution-imagination-deep-thinking` | AI/SWE philosophy | published |
+| 9 | Stop Giving AI Agents Your SSH Keys | `stop-giving-ai-agents-your-ssh-keys` | remotecmd (security angle) | published |
+| 10 | remotecmd parallel streams, faster than scp | `remotecmd-parallel-streams-faster-than-scp` | remotecmd (file transfer) | published |
+| 11 | Your Homelab Behind CGNAT — Now Reachable for Free | `your-homelab-behind-cgnat-now-reachable-for-free` | remotecmd (free tier launch) | published |
 
 ## Key Implementation Details
 
@@ -165,3 +224,28 @@ const BP=require("/app/node_modules/@intranefr/superbackend/src/models/BlogPost"
 - The superbackend middleware is dual-mounted at `/saas` and `/blog-intrane-fr/saas` to handle the prefix
 - Container restart clears EJS cache but MongoDB data persists
 - The `cacheLayer` is in-memory only (no Redis by default) — survives restarts only via MongoDB offload
+
+## Analytics — Vigie (not SuperInsights)
+
+blog.intrane.fr uses **Vigie** (`vigie.intrane.fr/vigie.js` in the SSR head template), not SuperInsights, for pageview/referrer/UTM tracking. SuperInsights (MongoDB on vps1) is the legacy system — do not use it for current blog analytics.
+
+Query blog stats via the Vigie API:
+
+```bash
+TOKEN="faebfd6050b80ee0a0784e4e62968e1c83f6848af8aaba60"  # VIGIE_ADMIN_TOKEN on dk1
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "https://vigie.intrane.fr/api/stats/overview?site=blog.intrane.fr&since=24h"
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "https://vigie.intrane.fr/api/stats/pages?site=blog.intrane.fr&since=24h&limit=20"
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "https://vigie.intrane.fr/api/stats/referrers?site=blog.intrane.fr&since=24h"
+```
+
+Vigie stores UTM params (`utm_source`, `utm_medium`, `utm_campaign`) in dedicated SQLite columns. For UTM breakdowns not exposed by the stats API, query SQLite directly on dk1:
+
+```bash
+ssh dk1 "sqlite3 /opt/vigie/vigie.db \
+  \"SELECT utm_source, utm_campaign, count(*) FROM events \
+   WHERE site='blog.intrane.fr' GROUP BY utm_source, utm_campaign \
+   ORDER BY count(*) DESC;\""
+```
