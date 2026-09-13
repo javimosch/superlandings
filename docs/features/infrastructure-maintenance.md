@@ -57,6 +57,13 @@ Standard configuration for production:
 - **Networking**: Joins `coolify-shared` network (optional) for Traefik integration.
 - **Restart Policy**: `unless-stopped` ensures high availability.
 
+## Runtime cache and template reload
+
+SuperLandings keeps on-disk and in-memory caches for performance. Editing landings or EJS templates no longer requires a full container restart.
+
+- **`node manage.js refresh <slug>`** copies `data/landings/<slug>` into both `data/landing-cache/<slug>` and `data/landing-cache/<undashed>` variants, invalidating the on-disk landing cache.
+- **`POST /api/admin-config/templates/reload`** clears the Express view cache and EJS compiled-function cache, so template changes are picked up immediately. The admin panel exposes this as the **Reload templates** button.
+
 ## Best practices
 - **Migrations**: Always run the RBAC and Version migrations after upgrading from a version older than 1.5.
 - **Volumes**: Never run the container without a persistent volume mapped to `/app/data`, or you will lose all landings and versions on restart.

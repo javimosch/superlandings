@@ -16,6 +16,12 @@
       <i v-else class="ti ti-scroll text-lg"></i>
       <span>{{ loading.versionMigration ? 'Migrating...' : 'Migration Versions' }}</span>
     </button>
+    <!-- Admin: Reload templates without restart -->
+    <button v-if="authInfo.isAdmin" @click="reloadTemplates" :disabled="loading.templateReload" class="bg-slate-800 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-slate-700 transition font-semibold shadow-md disabled:opacity-50 text-sm sm:text-base flex items-center gap-2">
+      <i v-if="loading.templateReload" class="ti ti-loader-2 w-5 h-5 animate-spin"></i>
+      <i v-else class="ti ti-refresh text-lg"></i>
+      <span>{{ loading.templateReload ? 'Reloading...' : 'Reload templates' }}</span>
+    </button>
   </div>
 
   <div class="bg-white rounded-lg shadow-md overflow-hidden">
