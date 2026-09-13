@@ -92,8 +92,8 @@ async function domainStaticMiddleware(req, res, next) {
 
     const fullPath = safeResolvePath(landingDir, filePath);
     if (fullPath && fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) return res.sendFile(fullPath);
-    // Try .html extension if the file doesn't exist (e.g. /docs → docs.html)
-    if (fullPath && !fs.existsSync(fullPath) && !filePath.endsWith('.html')) {
+    // Try .html extension if exact file doesn't exist (e.g. /docs → docs.html, /articles → articles.html)
+    if (fullPath && !filePath.endsWith('.html')) {
       const htmlPath = fullPath + '.html';
       if (fs.existsSync(htmlPath) && fs.statSync(htmlPath).isFile()) return res.sendFile(htmlPath);
     }
